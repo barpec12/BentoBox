@@ -32,6 +32,7 @@ import world.bentobox.bentobox.listeners.flags.protection.ShearingListener;
 import world.bentobox.bentobox.listeners.flags.protection.TNTListener;
 import world.bentobox.bentobox.listeners.flags.protection.TeleportationListener;
 import world.bentobox.bentobox.listeners.flags.protection.ThrowingListener;
+import world.bentobox.bentobox.listeners.flags.settings.DecayListener;
 import world.bentobox.bentobox.listeners.flags.settings.MobSpawnListener;
 import world.bentobox.bentobox.listeners.flags.settings.PVPListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.ChestDamageListener;
@@ -46,6 +47,7 @@ import world.bentobox.bentobox.listeners.flags.worldsettings.InvincibleVisitorsL
 import world.bentobox.bentobox.listeners.flags.worldsettings.IslandRespawnListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.ItemFrameListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.LiquidsFlowingOutListener;
+import world.bentobox.bentobox.listeners.flags.worldsettings.NaturalSpawningOutsideRangeListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.ObsidianScoopingListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.OfflineRedstoneListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.PistonPushListener;
@@ -102,10 +104,31 @@ public final class Flags {
     public static final Flag REDSTONE = new Flag.Builder("REDSTONE", Material.REDSTONE).build();
     public static final Flag SPAWN_EGGS = new Flag.Builder("SPAWN_EGGS", Material.COW_SPAWN_EGG).build();
     public static final Flag ITEM_FRAME = new Flag.Builder("ITEM_FRAME", Material.ITEM_FRAME).build();
+    /**
+     * Prevents players from interacting with the Dragon Egg.
+     * @since 1.4.0
+     * @see BlockInteractionListener
+     * @see BreakBlocksListener
+     */
+    public static final Flag DRAGON_EGG = new Flag.Builder("DRAGON_EGG", Material.DRAGON_EGG).build();
 
     // Entity interactions
     public static final Flag ARMOR_STAND = new Flag.Builder("ARMOR_STAND", Material.ARMOR_STAND).listener(new EntityInteractListener()).build();
     public static final Flag RIDING = new Flag.Builder("RIDING", Material.GOLDEN_HORSE_ARMOR).build();
+    /**
+     * Prevents players from issuing any kind of interactions with Minecarts (entering, placing and opening if chest).
+     * @since 1.3.0
+     * @see EntityInteractListener
+     * @see PlaceBlocksListener
+     */
+    public static final Flag MINECART = new Flag.Builder("MINECART", Material.MINECART).build();
+    /**
+     * Prevents players from issuing any kind of interactions with Boats (entering, placing).
+     * @since 1.3.0
+     * @see EntityInteractListener
+     * @see PlaceBlocksListener
+     */
+    public static final Flag BOAT = new Flag.Builder("BOAT", Material.OAK_BOAT).build();
     public static final Flag TRADING = new Flag.Builder("TRADING", Material.EMERALD).defaultSetting(true).build();
     public static final Flag NAME_TAG = new Flag.Builder("NAME_TAG", Material.NAME_TAG).build();
 
@@ -151,7 +174,17 @@ public final class Flags {
      * I'll take you to burn
      * - The Crazy World of Arthur Brown
      */
-    public static final Flag FIRE = new Flag.Builder("FIRE", Material.FLINT_AND_STEEL).listener(new FireListener()).build();
+    /**
+     * Prevents players from starting fires using flint and steel or fire charges.
+     * @since 1.3.0
+     *
+     * @see FireListener
+     */
+    public static final Flag FLINT_AND_STEEL = new Flag.Builder("FLINT_AND_STEEL", Material.FLINT_AND_STEEL).listener(new FireListener()).build();
+    /**
+     * Prevents players from extinguishing fires.
+     * @see FireListener
+     */
     public static final Flag FIRE_EXTINGUISH = new Flag.Builder("FIRE_EXTINGUISH", Material.POTION).build();
 
     // Inventories
@@ -207,12 +240,36 @@ public final class Flags {
     public static final Flag PVP_END = new Flag.Builder("PVP_END", Material.END_CRYSTAL).type(Type.SETTING)
             .defaultRank(DISABLED).build();
 
+    // Fire
+    /**
+     * Prevents fire from burning blocks.
+     * @since 1.3.0
+     * @see FireListener
+     */
+    public static final Flag FIRE_BURNING = new Flag.Builder("FIRE_BURNING", Material.CHARCOAL).defaultSetting(true).type(Type.SETTING).build();
+    /**
+     * Prevents fire from being ignited by non-players.
+     * @since 1.3.0
+     * @see FireListener
+     */
+    public static final Flag FIRE_IGNITE = new Flag.Builder("FIRE_IGNITE", Material.FLINT_AND_STEEL).defaultSetting(true).type(Type.SETTING).build();
+    /**
+     * Prevents fire from spreading to other blocks.
+     * @see FireListener
+     */
+    public static final Flag FIRE_SPREAD = new Flag.Builder("FIRE_SPREAD", Material.FIREWORK_STAR).defaultSetting(true).type(Type.SETTING).build();
+
     // Others
     public static final Flag ANIMAL_SPAWN = new Flag.Builder("ANIMAL_SPAWN", Material.APPLE).defaultSetting(true).type(Type.SETTING)
             .listener(new MobSpawnListener()).build();
     public static final Flag MONSTER_SPAWN = new Flag.Builder("MONSTER_SPAWN", Material.SPAWNER).defaultSetting(true).type(Type.SETTING).build();
 
-    public static final Flag FIRE_SPREAD = new Flag.Builder("FIRE_SPREAD", Material.FIREWORK_STAR).defaultSetting(true).type(Type.SETTING).build();
+    /**
+     * If {@code false}, prevents leaves from disappearing.
+     * @since 1.4.0
+     * @see DecayListener
+     */
+    public static final Flag LEAF_DECAY = new Flag.Builder("LEAF_DECAY", Material.OAK_LEAVES).type(Type.SETTING).listener(new DecayListener()).defaultSetting(true).build();
 
     /*
      * World Settings - they apply to every island in the game worlds.
@@ -307,11 +364,22 @@ public final class Flags {
     public static final Flag TREES_GROWING_OUTSIDE_RANGE = new Flag.Builder("TREES_GROWING_OUTSIDE_RANGE", Material.OAK_SAPLING).type(Type.WORLD_SETTING).listener(new TreesGrowingOutsideRangeListener()).build();
 
     /**
+     * Toggles whether monsters and animals can spawn naturally outside an island's protection range or not.
+     * It is allowed by default.
+     *
+     * @since 1.3.0
+     * @see NaturalSpawningOutsideRangeListener
+     */
+    public static final Flag NATURAL_SPAWNING_OUTSIDE_RANGE = new Flag.Builder("NATURAL_SPAWNING_OUTSIDE_RANGE", Material.ZOMBIE_SPAWN_EGG).type(Type.WORLD_SETTING).listener(new NaturalSpawningOutsideRangeListener()).defaultSetting(true).build();
+
+    /**
      * Provides a list of all the Flag instances contained in this class using reflection.
      * @return List of all the flags in this class
      */
     public static List<Flag> values() {
-        return Arrays.stream(Flags.class.getFields()).map(field -> {
+        return Arrays.stream(Flags.class.getFields())
+                .filter(field -> field.getAnnotation(Deprecated.class) == null) // Ensures it is not deprecated
+                .map(field -> {
             try {
                 return (Flag)field.get(null);
             } catch (IllegalArgumentException | IllegalAccessException e) {

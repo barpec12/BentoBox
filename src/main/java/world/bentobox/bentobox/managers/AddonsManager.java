@@ -17,7 +17,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -177,9 +176,8 @@ public class AddonsManager {
         // Set the AddonState as "ERROR".
         addon.setState(Addon.State.ERROR);
         plugin.logError("Skipping " + addon.getDescription().getName() + " due to an unhandled exception...");
-        plugin.logError("STACKTRACE: " + throwable.getClass().getSimpleName() + " - " + throwable.getMessage() + " - " + throwable.getCause());
-        // Required for addon development
-        plugin.logError(ExceptionUtils.getStackTrace(throwable));
+        // Send stacktrace, required for addon development
+        plugin.logStacktrace(throwable);
     }
 
     /**

@@ -1,10 +1,12 @@
 package world.bentobox.bentobox.api.user;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.Bukkit;
@@ -20,6 +22,8 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.util.Vector;
 
+import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.Addon;
 
@@ -50,6 +54,7 @@ public class User {
      * @param sender - command sender, e.g. console
      * @return user - user
      */
+    @Nullable
     public static User getInstance(CommandSender sender) {
         if (sender instanceof Player) {
             return getInstance((Player)sender);
@@ -63,6 +68,7 @@ public class User {
      * @param player - the player
      * @return user - user
      */
+    @Nullable
     public static User getInstance(Player player) {
         if (player == null) {
             return null;
@@ -78,6 +84,7 @@ public class User {
      * @param uuid - UUID
      * @return user - user
      */
+    @Nullable
     public static User getInstance(UUID uuid) {
         if (uuid == null) {
             return null;
@@ -90,18 +97,39 @@ public class User {
     }
 
     /**
+     * Gets an instance of User from an OfflinePlayer
+     * @param offlinePlayer offline Player
+     * @return user
+     * @since 1.3.0
+     */
+    @Nullable
+    public static User getInstance(OfflinePlayer offlinePlayer) {
+        if (offlinePlayer == null) {
+            return null;
+        }
+        if (users.containsKey(offlinePlayer.getUniqueId())) {
+            return users.get(offlinePlayer.getUniqueId());
+        }
+        return new User(offlinePlayer);
+    }
+
+    /**
      * Removes this player from the User cache
      * @param player the player
      */
     public static void removePlayer(Player player) {
-        users.remove(player.getUniqueId());
+        if (player != null) {
+            users.remove(player.getUniqueId());
+        }
     }
 
     // ----------------------------------------------------
 
     private static BentoBox plugin = BentoBox.getInstance();
 
+    @Nullable
     private Player player;
+    private OfflinePlayer offlinePlayer;
     private final UUID playerUUID;
     private final CommandSender sender;
 
@@ -113,17 +141,26 @@ public class User {
         this.sender = sender;
     }
 
-    private User(Player player) {
+    private User(@NonNull Player player) {
         this.player = player;
+        offlinePlayer = player;
         sender = player;
         playerUUID = player.getUniqueId();
-        users.put(player.getUniqueId(), this);
+        users.put(playerUUID, this);
+    }
+
+    private User(@NonNull OfflinePlayer offlinePlayer) {
+        this.player = offlinePlayer.isOnline() ? offlinePlayer.getPlayer() : null;
+        this.playerUUID = offlinePlayer.getUniqueId();
+        this.sender = offlinePlayer.isOnline() ? offlinePlayer.getPlayer() : null;
+        this.offlinePlayer = offlinePlayer;
     }
 
     private User(UUID playerUUID) {
         player = Bukkit.getPlayer(playerUUID);
         this.playerUUID = playerUUID;
         sender = player;
+        offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
     }
 
     /**
@@ -138,10 +175,12 @@ public class User {
         return sender.getEffectivePermissions();
     }
 
+    @Nullable
     public PlayerInventory getInventory() {
         return player != null ? player.getInventory() : null;
     }
 
+    @Nullable
     public Location getLocation() {
         return player != null ? player.getLocation() : null;
     }
@@ -162,6 +201,22 @@ public class User {
      */
     public boolean isPlayer() {
         return player != null;
+    }
+
+    /**
+     * @return the offline player
+     * @since 1.3.0
+     */
+    public OfflinePlayer getOfflinePlayer() {
+        return offlinePlayer;
+    }
+
+    /**
+     * @return true if this user is an OfflinePlayer, false if not, e.g., console
+     * @since 1.3.0
+     */
+    public boolean isOfflinePlayer() {
+        return offlinePlayer != null;
     }
 
     public CommandSender getSender() {
@@ -192,49 +247,54 @@ public class User {
         if (sender != null) {
             return sender.isOp();
         }
-        if (playerUUID != null) {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
-            if (offlinePlayer != null) {
-                return offlinePlayer.isOp();
-            }
+        if (playerUUID != null && offlinePlayer != null) {
+            return offlinePlayer.isOp();
         }
         return false;
     }
 
     /**
-     * Get the maximum value of a numerical permission setting
+     * Get the maximum value of a numerical permission setting.
+     * If a player is given an explicit negative number then this is treated as "unlimited" and returned immediately.
      * @param permissionPrefix the start of the perm, e.g., {@code plugin.mypermission}
      * @param defaultValue the default value; the result may be higher or lower than this
      * @return max value
      */
     public int getPermissionValue(String permissionPrefix, int defaultValue) {
+        int value = defaultValue;
+
         // If there is a dot at the end of the permissionPrefix, remove it
         if (permissionPrefix.endsWith(".")) {
             permissionPrefix = permissionPrefix.substring(0, permissionPrefix.length()-1);
         }
 
-        int value = defaultValue;
-        for (PermissionAttachmentInfo perms : player.getEffectivePermissions()) {
-            if (perms.getPermission().startsWith(permissionPrefix + ".")) {
-                // Get the max value should there be more than one
-                if (perms.getPermission().contains(permissionPrefix + ".*")) {
-                    return value;
-                } else {
-                    String[] spl = perms.getPermission().split(permissionPrefix + ".");
-                    if (spl.length > 1) {
-                        if (!NumberUtils.isDigits(spl[1])) {
-                            plugin.logError("Player " + player.getName() + " has permission: '" + perms.getPermission() + "' <-- the last part MUST be a number! Ignoring...");
-                        } else {
-                            value = Math.max(value, Integer.valueOf(spl[1]));
+        final String permPrefix = permissionPrefix + ".";
+
+        List<String> permissions = player.getEffectivePermissions().stream()
+                .map(PermissionAttachmentInfo::getPermission)
+                .filter(permission -> permission.startsWith(permPrefix))
+                .collect(Collectors.toList());
+
+        for (String permission : permissions) {
+            if (permission.contains(permPrefix + "*")) {
+                // 'Star' permission
+                return value;
+            } else {
+                String[] spl = permission.split(permPrefix);
+                if (spl.length > 1) {
+                    if (!NumberUtils.isNumber(spl[1])) {
+                        plugin.logError("Player " + player.getName() + " has permission: '" + permission + "' <-- the last part MUST be a number! Ignoring...");
+                    } else {
+                        int v = Integer.parseInt(spl[1]);
+                        if (v < 0) {
+                            return v;
                         }
+                        value = Math.max(value, v);
                     }
                 }
             }
-            // Do some sanity checking
-            if (value < 1) {
-                value = 1;
-            }
         }
+
         return value;
     }
 

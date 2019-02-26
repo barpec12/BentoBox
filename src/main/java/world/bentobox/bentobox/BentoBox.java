@@ -2,6 +2,7 @@ package world.bentobox.bentobox;
 
 import java.util.Optional;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.PluginManager;
@@ -22,8 +23,10 @@ import world.bentobox.bentobox.listeners.BannedVisitorCommands;
 import world.bentobox.bentobox.listeners.BlockEndDragon;
 import world.bentobox.bentobox.listeners.DeathListener;
 import world.bentobox.bentobox.listeners.JoinLeaveListener;
-import world.bentobox.bentobox.listeners.NetherPortals;
+import world.bentobox.bentobox.listeners.NetherTreesListener;
 import world.bentobox.bentobox.listeners.PanelListenerManager;
+import world.bentobox.bentobox.listeners.PortalTeleportationListener;
+import world.bentobox.bentobox.listeners.StandardSpawnProtectionListener;
 import world.bentobox.bentobox.managers.AddonsManager;
 import world.bentobox.bentobox.managers.CommandsManager;
 import world.bentobox.bentobox.managers.FlagsManager;
@@ -36,6 +39,7 @@ import world.bentobox.bentobox.managers.PlaceholdersManager;
 import world.bentobox.bentobox.managers.PlayersManager;
 import world.bentobox.bentobox.managers.RanksManager;
 import world.bentobox.bentobox.managers.SchemsManager;
+import world.bentobox.bentobox.managers.WebManager;
 import world.bentobox.bentobox.util.heads.HeadGetter;
 import world.bentobox.bentobox.versions.ServerCompatibility;
 
@@ -61,6 +65,7 @@ public class BentoBox extends JavaPlugin {
     private HooksManager hooksManager;
     private PlaceholdersManager placeholdersManager;
     private IslandDeletionManager islandDeletionManager;
+    private WebManager webManager;
 
     // Settings
     private Settings settings;
@@ -177,6 +182,9 @@ public class BentoBox extends JavaPlugin {
             hooksManager.registerHook(new MultiverseCoreHook());
             islandWorldManager.registerWorldsToMultiverse();
 
+            webManager = new WebManager(this);
+            webManager.requestGitHubData();
+
             // Show banner
             User.getInstance(Bukkit.getConsoleSender()).sendMessage("successfully-loaded",
                     TextVariables.VERSION, instance.getDescription().getVersion(),
@@ -189,7 +197,7 @@ public class BentoBox extends JavaPlugin {
     }
 
     /**
-     * Register listeners
+     * Registers listeners.
      */
     private void registerListeners() {
         PluginManager manager = getServer().getPluginManager();
@@ -197,8 +205,12 @@ public class BentoBox extends JavaPlugin {
         manager.registerEvents(new JoinLeaveListener(this), this);
         // Panel listener manager
         manager.registerEvents(new PanelListenerManager(), this);
+        // Standard Nether/End spawns protection
+        manager.registerEvents(new StandardSpawnProtectionListener(this), this);
         // Nether portals
-        manager.registerEvents(new NetherPortals(this), this);
+        manager.registerEvents(new PortalTeleportationListener(this), this);
+        // Nether trees conversion
+        manager.registerEvents(new NetherTreesListener(this), this);
         // End dragon blocking
         manager.registerEvents(new BlockEndDragon(this), this);
         // Banned visitor commands
@@ -340,6 +352,16 @@ public class BentoBox extends JavaPlugin {
 
     public void logError(String error) {
         getLogger().severe(() -> error);
+    }
+
+    /**
+     * Logs the stacktrace of a Throwable that was thrown by an error.
+     * It should be used preferably instead of {@link Throwable#printStackTrace()} as it does not risk exposing sensitive information.
+     * @param throwable the Throwable that was thrown by an error.
+     * @since 1.3.0
+     */
+    public void logStacktrace(@NonNull Throwable throwable) {
+        logError(ExceptionUtils.getStackTrace(throwable));
     }
 
     public void logWarning(String warning) {

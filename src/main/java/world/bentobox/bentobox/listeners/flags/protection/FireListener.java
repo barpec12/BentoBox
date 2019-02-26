@@ -48,7 +48,7 @@ public class FireListener extends FlagListener {
      */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public boolean onBlockBurn(BlockBurnEvent e) {
-        return checkFire(e, e.getBlock().getLocation(), Flags.FIRE);
+        return checkFire(e, e.getBlock().getLocation(), Flags.FIRE_BURNING);
     }
 
     /**
@@ -67,7 +67,7 @@ public class FireListener extends FlagListener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public boolean onBlockIgnite(BlockIgniteEvent e) {
         // Check if this is a portal lighting - that is allowed any time
-        return !e.getBlock().getType().equals(Material.OBSIDIAN) && checkFire(e, e.getBlock().getLocation(), Flags.FIRE);
+        return !e.getBlock().getType().equals(Material.OBSIDIAN) && checkFire(e, e.getBlock().getLocation(), Flags.FIRE_IGNITE);
     }
 
     /**
@@ -76,8 +76,9 @@ public class FireListener extends FlagListener {
      */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent e) {
-        if (e.getAction().equals(Action.RIGHT_CLICK_BLOCK) && e.getMaterial() != null && e.getMaterial().equals(Material.FLINT_AND_STEEL)) {
-            checkIsland(e, e.getClickedBlock().getLocation(), Flags.FIRE);
+        if (e.getAction().equals(Action.RIGHT_CLICK_BLOCK) && e.getMaterial() != null
+                && (e.getMaterial() == Material.FLINT_AND_STEEL || e.getMaterial() == Material.FIRE_CHARGE)) {
+            checkIsland(e, e.getPlayer(), e.getClickedBlock().getLocation(), Flags.FLINT_AND_STEEL);
         }
         // Look along player's sight line to see if any blocks are fire. Players can hit fire out quite a long way away.
         try {
@@ -85,12 +86,11 @@ public class FireListener extends FlagListener {
             while (iter.hasNext()) {
                 Block lastBlock = iter.next();
                 if (lastBlock.getType().equals(Material.FIRE)) {
-                    checkIsland(e, lastBlock.getLocation(), Flags.FIRE_EXTINGUISH);
+                    checkIsland(e, e.getPlayer(), lastBlock.getLocation(), Flags.FIRE_EXTINGUISH);
                 }
             }
         } catch (Exception ex) {
             // To catch at block iterator exceptions that can happen in the void or at the very top of blocks
         }
     }
-
 }
