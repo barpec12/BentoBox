@@ -36,7 +36,7 @@ public class SchemsPanel {
         for (String name : BentoBox.getInstance().getSchemsManager().get(world).keySet()) {
             PanelItemBuilder panelItemBuilder = new PanelItemBuilder();
 
-            ItemStack item = new ItemStack(Material.GRASS_BLOCK); //TODO make this configurable
+            ItemStack item = new ItemStack(Material.CYAN_CONCRETE_POWDER); //TODO make this configurable
             panelItemBuilder.icon(item);
 
             panelItemBuilder.name(ChatColor.WHITE + fancySchemDisplayName(user, name)) //TODO make this configurable
