@@ -44,10 +44,14 @@ import world.bentobox.bentobox.util.Util;
  * Managed by IslandsManager
  * Responsible for team information as well.
  *
- * @author Tastybento
+ * @author tastybento
  * @author Poslovitch
  */
 public class Island implements DataObject {
+
+    // True if this island is deleted and pending deletion from the database
+    @Expose
+    private boolean deleted = false;
 
     @Expose
     private String uniqueId = UUID.randomUUID().toString();
@@ -186,10 +190,11 @@ public class Island implements DataObject {
     }
 
     /**
-     * @return the center Location
+     * Returns a clone of the location of the center of this island.
+     * @return clone of the center Location
      */
     public Location getCenter(){
-        return center;
+        return center == null ? null : center.clone();
     }
 
     /**
@@ -715,8 +720,8 @@ public class Island implements DataObject {
             user.sendMessage("commands.admin.info.owner", "[owner]", plugin.getPlayers().getName(owner), "[uuid]", owner.toString());
 
             // Fixes #getLastPlayed() returning 0 when it is the owner's first connection.
-            long lastPlayed = (plugin.getServer().getOfflinePlayer(owner).getLastPlayed() != 0) ?
-                    plugin.getServer().getOfflinePlayer(owner).getLastPlayed() : plugin.getServer().getOfflinePlayer(owner).getFirstPlayed();
+            long lastPlayed = (Bukkit.getServer().getOfflinePlayer(owner).getLastPlayed() != 0) ?
+                    Bukkit.getServer().getOfflinePlayer(owner).getLastPlayed() : Bukkit.getServer().getOfflinePlayer(owner).getFirstPlayed();
                     user.sendMessage("commands.admin.info.last-login","[date]", new Date(lastPlayed).toString());
 
                     user.sendMessage("commands.admin.info.deaths", "[number]", String.valueOf(plugin.getPlayers().getDeaths(world, owner)));
@@ -849,5 +854,19 @@ public class Island implements DataObject {
      */
     public void setDoNotLoad(boolean doNotLoad) {
         this.doNotLoad = doNotLoad;
+    }
+
+    /**
+     * @return the deleted
+     */
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    /**
+     * @param deleted the deleted to set
+     */
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
     }
 }

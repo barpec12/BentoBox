@@ -15,6 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.TreeSpecies;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -22,18 +23,21 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Openable;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.PufferFish;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+
+import com.google.common.collect.ImmutableMap;
 
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.events.IslandBaseEvent;
 import world.bentobox.bentobox.api.events.island.IslandEvent;
 import world.bentobox.bentobox.api.events.island.IslandEvent.Reason;
 import world.bentobox.bentobox.api.localization.TextVariables;
+import world.bentobox.bentobox.api.logs.LogEntry;
 import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.database.Database;
 import world.bentobox.bentobox.database.objects.Island;
@@ -54,6 +58,15 @@ public class IslandsManager {
 
     private BentoBox plugin;
 
+    // Tree species to boat material map
+    private final static Map<TreeSpecies, Material> TREE_TO_BOAT = ImmutableMap.<TreeSpecies, Material>builder().
+            put(TreeSpecies.ACACIA, Material.ACACIA_BOAT).
+            put(TreeSpecies.BIRCH, Material.BIRCH_BOAT).
+            put(TreeSpecies.DARK_OAK, Material.DARK_OAK_BOAT).
+            put(TreeSpecies.JUNGLE, Material.JUNGLE_BOAT).
+            put(TreeSpecies.GENERIC, Material.OAK_BOAT).
+            put(TreeSpecies.REDWOOD, Material.SPRUCE_BOAT).build();
+
     /**
      * One island can be spawn, this is the one - otherwise, this value is null
      */
@@ -72,8 +85,12 @@ public class IslandsManager {
     // Island Cache
     @NonNull
     private IslandCache islandCache;
+    // Quarantined islands
     @NonNull
     private Map<UUID, List<Island>> quarantineCache;
+    // Deleted islands
+    @NonNull
+    private List<String> deletedIslands;
 
     /**
      * Islands Manager
@@ -87,6 +104,9 @@ public class IslandsManager {
         quarantineCache = new HashMap<>();
         spawn = new HashMap<>();
         last = new HashMap<>();
+        // This list should always be empty unless database deletion failed
+        // In that case a purge utility may be required in the future
+        deletedIslands = new ArrayList<>();
     }
 
     /**
@@ -266,7 +286,13 @@ public class IslandsManager {
         if (removeBlocks) {
             // Remove island from the cache
             islandCache.deleteIslandFromCache(island);
-            // Remove the island from the database
+            // Log the deletion (it shouldn't matter but may be useful)
+            island.log(new LogEntry.Builder("DELETED").build());
+            // Set the delete flag which will prevent it from being loaded even if database deletion fails
+            island.setDeleted(true);
+            // Save the island
+            handler.saveObject(island);
+            // Delete the island
             handler.deleteObject(island);
             // Remove players from island
             removePlayersFromIsland(island);
@@ -580,7 +606,7 @@ public class IslandsManager {
                 player.leaveVehicle();
                 // Remove the boat so they don't lie around everywhere
                 boat.remove();
-                player.getInventory().addItem(new ItemStack(Material.getMaterial(((Boat) boat).getWoodType().toString() + "_BOAT"), 1));
+                player.getInventory().addItem(new ItemStack(TREE_TO_BOAT.getOrDefault(((Boat) boat).getWoodType(), Material.OAK_BOAT)));
                 player.updateInventory();
             }
         }
@@ -703,9 +729,12 @@ public class IslandsManager {
         islandCache.clear();
         quarantineCache.clear();
         List<Island> toQuarantine = new ArrayList<>();
-        // Only load non-quarantined island
+        // Attempt to load islands
         handler.loadObjects().stream().forEach(island -> {
-            if (island.isDoNotLoad() && island.getWorld() != null && island.getCenter() != null) {
+            if (island.isDeleted()) {
+                // These will be deleted later
+                deletedIslands.add(island.getUniqueId());
+            } else if (island.isDoNotLoad() && island.getWorld() != null && island.getCenter() != null) {
                 // Add to quarantine cache
                 quarantineCache.computeIfAbsent(island.getOwner(), k -> new ArrayList<>()).add(island);
             } else {
@@ -768,7 +797,7 @@ public class IslandsManager {
     }
 
     /**
-     * Checks if an online player is in the protected area of an island he owns or he is part of.
+     * Checks if an online player is in the protected area of an island he owns or he is part of. i.e. rank is > VISITOR_RANK
      *
      * @param world the World to check. Typically this is the user's world. Does not check nether or end worlds. If null the method will always return {@code false}.
      * @param user the User to check, if null or if this is not a Player the method will always return {@code false}.
@@ -809,8 +838,7 @@ public class IslandsManager {
     }
 
     /**
-     * This removes players from an island overworld and nether - used when reseting or deleting an island
-     * Mobs are killed when the chunks are refreshed.
+     * This teleports players away from an island - used when reseting or deleting an island
      * @param island to remove players from
      */
     public void removePlayersFromIsland(Island island) {
@@ -942,8 +970,9 @@ public class IslandsManager {
      */
     public void clearArea(Location loc) {
         loc.getWorld().getNearbyEntities(loc, 5D, 5D, 5D).stream()
-        .filter(en -> (en instanceof Monster))
-        .filter(en -> !plugin.getIWM().getRemoveMobsWhitelist(loc.getWorld()).contains(en.getType()))
+        .filter(en -> Util.isHostileEntity(en)
+                && !plugin.getIWM().getRemoveMobsWhitelist(loc.getWorld()).contains(en.getType())
+                && !(en instanceof PufferFish))
         .forEach(Entity::remove);
     }
 

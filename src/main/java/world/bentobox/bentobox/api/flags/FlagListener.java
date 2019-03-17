@@ -44,7 +44,8 @@ public abstract class FlagListener implements Listener {
         SETTING_ALLOWED_ON_ISLAND,
         SETTING_NOT_ALLOWED_ON_ISLAND,
         SETTING_ALLOWED_IN_WORLD,
-        SETTING_NOT_ALLOWED_IN_WORLD
+        SETTING_NOT_ALLOWED_IN_WORLD,
+        NULL_LOCATION
     }
 
     @NonNull
@@ -103,11 +104,11 @@ public abstract class FlagListener implements Listener {
      * Check if flag is allowed at location. Uses player object because Bukkit events provide player.
      * @param e - event
      * @param player - player affected by this flag, or null if none
-     * @param loc - location
+     * @param loc - location, will return true if null
      * @param flag - flag {@link world.bentobox.bentobox.lists.Flags}
      * @return true if allowed, false if not
      */
-    public boolean checkIsland(@NonNull Event e, @Nullable Player player, @NonNull Location loc, @NonNull Flag flag) {
+    public boolean checkIsland(@NonNull Event e, @Nullable Player player, @Nullable Location loc, @NonNull Flag flag) {
         return checkIsland(e, player, loc, flag, false);
     }
 
@@ -115,17 +116,24 @@ public abstract class FlagListener implements Listener {
      * Check if flag is allowed at location
      * @param e - event
      * @param player - player affected by this flag, or null if none
-     * @param loc - location
+     * @param loc - location, will return true if null
      * @param flag - flag {@link world.bentobox.bentobox.lists.Flags}
      * @param silent - if true, no attempt is made to tell the user
      * @return true if the check is okay, false if it was disallowed
      */
-    public boolean checkIsland(@NonNull Event e, @Nullable Player player, @NonNull Location loc, @NonNull Flag flag, boolean silent) {
+    public boolean checkIsland(@NonNull Event e, @Nullable Player player, @Nullable Location loc, @NonNull Flag flag, boolean silent) {
         // Set user
         user = User.getInstance(player);
+        if (loc == null) {
+            if (user.getLocation() != null && user.getLocation().getWorld() != null) {
+                report(user, e, user.getLocation(), flag, Why.NULL_LOCATION);
+            }
+            return true;
+        }
+
         // If this is not an Island World or a standard Nether or End, skip
         if (!plugin.getIWM().inWorld(loc)) {
-            report(user, e, loc, flag,  Why.UNPROTECTED_WORLD);
+            report(user, e, loc, flag, Why.UNPROTECTED_WORLD);
             return true;
         }
 
@@ -162,7 +170,6 @@ public abstract class FlagListener implements Listener {
             }
             report(user, e, loc, flag,  Why.NOT_ALLOWED_IN_WORLD);
             noGo(e, flag, silent);
-            // Clear the user for the next time
             return false;
         }
 
@@ -180,7 +187,6 @@ public abstract class FlagListener implements Listener {
             }
             report(user, e, loc, flag,  Why.NOT_ALLOWED_ON_ISLAND);
             noGo(e, flag, silent);
-            // Clear the user for the next time
             return false;
         }
         // The player is in the world, but not on an island, so general world settings apply
@@ -201,7 +207,6 @@ public abstract class FlagListener implements Listener {
             plugin.log("Why: " + e.getEventName() + " in world " + loc.getWorld().getName() + " at " + Util.xyz(loc.toVector()));
             plugin.log("Why: " + user.getName() + " " + flag.getID() + " - " + why.name());
         }
-
     }
 
     /**

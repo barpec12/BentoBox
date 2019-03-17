@@ -154,18 +154,18 @@ public class JoinLeaveListener implements Listener {
         .filter(world -> plugin.getIslands().isOwner(world, user.getUniqueId()))
         .forEach(world -> {
             Island island = plugin.getIslands().getIsland(world, user);
+            if (island != null) {
+                // Check if new owner has a different range permission than the island size
+                int range = user.getPermissionValue(plugin.getIWM().getAddon(island.getWorld()).get().getPermissionPrefix() + "island.range", island.getProtectionRange());
 
-            // Check if new owner has a different range permission than the island size
-            int range = user.getPermissionValue(plugin.getIWM().getAddon(island.getWorld()).get().getPermissionPrefix() + "island.range", plugin.getIWM().getIslandProtectionRange(Util.getWorld(island.getWorld())));
-
-            // Range can go up or down
-            if (range != island.getProtectionRange()) {
-                user.sendMessage("commands.admin.setrange.range-updated", TextVariables.NUMBER, String.valueOf(range));
-                plugin.log("Island protection range changed from " + island.getProtectionRange() + " to "
-                        + range + " for " + user.getName() + " due to permission.");
+                // Range can go up or down
+                if (range != island.getProtectionRange()) {
+                    user.sendMessage("commands.admin.setrange.range-updated", TextVariables.NUMBER, String.valueOf(range));
+                    plugin.log("Island protection range changed from " + island.getProtectionRange() + " to "
+                            + range + " for " + user.getName() + " due to permission.");
+                }
+                island.setProtectionRange(range);
             }
-
-            island.setProtectionRange(range);
         });
     }
 
@@ -175,7 +175,7 @@ public class JoinLeaveListener implements Listener {
         plugin.getIWM().getOverWorlds().forEach(w -> {
             Island island = plugin.getIslands().getIsland(w, User.getInstance(event.getPlayer()));
             // Are there any online players still for this island?
-            if (island != null && plugin.getServer().getOnlinePlayers().stream()
+            if (island != null && Bukkit.getServer().getOnlinePlayers().stream()
                     .filter(p -> !event.getPlayer().equals(p))
                     .noneMatch(p -> plugin.getIslands().getMembers(w, event.getPlayer().getUniqueId()).contains(p.getUniqueId()))) {
                 // No, there are no more players online on this island

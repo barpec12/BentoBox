@@ -49,6 +49,7 @@ import world.bentobox.bentobox.listeners.flags.worldsettings.ItemFrameListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.LiquidsFlowingOutListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.NaturalSpawningOutsideRangeListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.ObsidianScoopingListener;
+import world.bentobox.bentobox.listeners.flags.worldsettings.OfflineGrowthListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.OfflineRedstoneListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.PistonPushListener;
 import world.bentobox.bentobox.listeners.flags.worldsettings.RemoveMobsListener;
@@ -106,7 +107,7 @@ public final class Flags {
     public static final Flag ITEM_FRAME = new Flag.Builder("ITEM_FRAME", Material.ITEM_FRAME).build();
     /**
      * Prevents players from interacting with the Dragon Egg.
-     * @since 1.4.0
+     * @since 1.3.1
      * @see BlockInteractionListener
      * @see BreakBlocksListener
      */
@@ -163,6 +164,12 @@ public final class Flags {
      * @see ThrowingListener
      */
     public static final Flag POTION_THROWING = new Flag.Builder("POTION_THROWING", Material.SPLASH_POTION).listener(new ThrowingListener()).build();
+    /**
+     * Prevents players from throwing experience bottles.
+     * @since 1.3.1
+     * @see ThrowingListener
+     */
+    public static final Flag EXPERIENCE_BOTTLE_THROWING = new Flag.Builder("EXPERIENCE_BOTTLE_THROWING", Material.EXPERIENCE_BOTTLE).build();
 
     /*
      * Fire
@@ -266,7 +273,7 @@ public final class Flags {
 
     /**
      * If {@code false}, prevents leaves from disappearing.
-     * @since 1.4.0
+     * @since 1.3.1
      * @see DecayListener
      */
     public static final Flag LEAF_DECAY = new Flag.Builder("LEAF_DECAY", Material.OAK_LEAVES).type(Type.SETTING).listener(new DecayListener()).defaultSetting(true).build();
@@ -309,8 +316,20 @@ public final class Flags {
     public static final Flag ISLAND_RESPAWN = new Flag.Builder("ISLAND_RESPAWN", Material.TORCH).type(Type.WORLD_SETTING)
             .listener(new IslandRespawnListener()).defaultSetting(true).build();
 
+    /**
+     * If disabled, prevents redstone from operating on islands whose members are offline.
+     * @see OfflineRedstoneListener
+     */
     public static final Flag OFFLINE_REDSTONE = new Flag.Builder("OFFLINE_REDSTONE", Material.COMPARATOR).type(Type.WORLD_SETTING)
             .listener(new OfflineRedstoneListener()).defaultSetting(true).build();
+
+    /**
+     * If disabled, prevents crops/plants from growing on islands whose members are offline.
+     * @since 1.4.0
+     * @see OfflineGrowthListener
+     */
+    public static final Flag OFFLINE_GROWTH = new Flag.Builder("OFFLINE_GROWTH", Material.WHEAT_SEEDS).type(Type.WORLD_SETTING)
+            .listener(new OfflineGrowthListener()).defaultSetting(true).build();
 
     public static final Flag CLEAN_SUPER_FLAT = new Flag.Builder("CLEAN_SUPER_FLAT", Material.BEDROCK).type(Type.WORLD_SETTING)
             .listener(new CleanSuperFlatListener()).build();
