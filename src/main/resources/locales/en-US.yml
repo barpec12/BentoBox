@@ -203,6 +203,11 @@ commands:
       load:
         parameters: "<schem name>"
         description: "load schem into the clipboard"
+      list:
+        parameters: ""
+        description: "list available schems"
+        no-schems: "&cNo schems in schems folder!"
+        available-schems: "&aThese schems are available for loading:"
       origin:
         parameters: ""
         description: "set the schem's origin to your position"
@@ -428,6 +433,14 @@ commands:
       description: "display island settings"
     language:
       description: "select language"
+    expel:
+      description: "expel a player from your island"
+      parameters: "<player>"
+      cannot-expel-yourself: "&cYou cannot expel yourself!"
+      cannot-expel: "&cThat player cannot be expelled."
+      cannot-ban-member: "&cYou cannot expel a team member!"
+      not-on-island: "&cThat player is not on your island!"
+      player-expelled-you: "&b[name]&c expelled you from the island!"
 
 ranks:
   owner: "Owner"
@@ -522,9 +535,9 @@ protection:
       name: "Clean Super Flat"
     COARSE_DIRT_TILLING:
       description: |-
-          &aToggle tilling the
-          &acoarse dirt to
-          &aobtain dirt
+          &aToggle tilling coarse
+          &adirt and breaking podzol
+          &ato obtain dirt
       name: "Coarse dirt tilling"
       hint: "No coarse dirt tilling"
     COLLECT_LAVA: 

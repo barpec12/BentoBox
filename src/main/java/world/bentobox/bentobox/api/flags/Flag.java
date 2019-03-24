@@ -1,17 +1,10 @@
 package world.bentobox.bentobox.api.flags;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.eclipse.jdt.annotation.NonNull;
-
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.bentobox.api.configuration.WorldSettings;
@@ -25,6 +18,12 @@ import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.database.objects.Island;
 import world.bentobox.bentobox.managers.RanksManager;
 import world.bentobox.bentobox.util.Util;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 public class Flag implements Comparable<Flag> {
 
@@ -281,58 +280,72 @@ public class Flag implements Comparable<Flag> {
      * Converts a flag to a panel item. The content of the flag will change depending on who the user is and where they are.
      * @param plugin - plugin
      * @param user - user that will see this flag
-     * @return - PanelItem for this flag
+     * @param invisible - true if this flag is not visible to players
+     * @return - PanelItem for this flag or null if item is inivisible to user
      */
-    public PanelItem toPanelItem(BentoBox plugin, User user) {
+    public PanelItem toPanelItem(BentoBox plugin, User user, boolean invisible) {
+        // Invisibility
+        if (!user.isOp() && invisible) {
+            return null;
+        }
         // Start the flag conversion
         PanelItemBuilder pib = new PanelItemBuilder()
                 .icon(new ItemStack(icon))
                 .name(user.getTranslation("protection.panel.flag-item.name-layout", TextVariables.NAME, user.getTranslation(getNameReference())))
-                .clickHandler(clickHandler);
+                .clickHandler(clickHandler)
+                .invisible(invisible);
         if (hasSubPanel()) {
             pib.description(user.getTranslation("protection.panel.flag-item.menu-layout", TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())));
             return pib.build();
         }
-        // Check if this is a setting or world setting
-        if (getType().equals(Type.WORLD_SETTING)) {
-            String worldDetting = this.isSetForWorld(user.getWorld()) ? user.getTranslation("protection.panel.flag-item.setting-active")
-                    : user.getTranslation("protection.panel.flag-item.setting-disabled");
-            pib.description(user.getTranslation("protection.panel.flag-item.setting-layout", TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())
-                    , "[setting]", worldDetting));
+        Island island = plugin.getIslands().getIslandAt(user.getLocation()).orElse(plugin.getIslands().getIsland(user.getWorld(), user.getUniqueId()));
+        switch(getType()) {
+        case PROTECTION:
+            return createProtectionFlag(plugin, user, island, pib).build();
+        case SETTING:
+            return createSettingFlag(user, island, pib).build();
+        case WORLD_SETTING:
+            return createWorldSettingFlag(user, pib).build();
+        default:
             return pib.build();
         }
-
-        // Get the island this user is on or their own
-        Island island = plugin.getIslands().getIslandAt(user.getLocation()).orElse(plugin.getIslands().getIsland(user.getWorld(), user.getUniqueId()));
-        if (island != null) {
-            if (getType().equals(Type.SETTING)) {
-                String islandSetting = island.isAllowed(this) ? user.getTranslation("protection.panel.flag-item.setting-active")
-                        : user.getTranslation("protection.panel.flag-item.setting-disabled");
-                pib.description(user.getTranslation("protection.panel.flag-item.setting-layout", TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())
-                        , "[setting]", islandSetting));
-                return pib.build();
-            }
-            // TODO: Get the world settings - the player has no island and is not in an island location
-            // Dynamic rank list
-            if (getType().equals(Type.PROTECTION)) {
-                // Protection flag
-                String d = user.getTranslation(getDescriptionReference());
-                d = user.getTranslation("protection.panel.flag-item.description-layout", TextVariables.DESCRIPTION, d);
-                pib.description(d);
-                plugin.getRanksManager().getRanks().forEach((reference, score) -> {
-                    if (score > RanksManager.BANNED_RANK && score < island.getFlag(this)) {
-                        pib.description(user.getTranslation("protection.panel.flag-item.blocked-rank") + user.getTranslation(reference));
-                    } else if (score <= RanksManager.OWNER_RANK && score > island.getFlag(this)) {
-                        pib.description(user.getTranslation("protection.panel.flag-item.allowed-rank") + user.getTranslation(reference));
-                    } else if (score == island.getFlag(this)) {
-                        pib.description(user.getTranslation("protection.panel.flag-item.minimal-rank") + user.getTranslation(reference));
-                    }
-                });
-            }
-        }
-        return pib.build();
     }
 
+    private PanelItemBuilder createWorldSettingFlag(User user, PanelItemBuilder pib) {
+        String worldSetting = this.isSetForWorld(user.getWorld()) ? user.getTranslation("protection.panel.flag-item.setting-active")
+                : user.getTranslation("protection.panel.flag-item.setting-disabled");
+        pib.description(user.getTranslation("protection.panel.flag-item.setting-layout", TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())
+                , "[setting]", worldSetting));
+        return pib;
+    }
+
+    private PanelItemBuilder createSettingFlag(User user, Island island, PanelItemBuilder pib) {
+        if (island != null) {
+            String islandSetting = island.isAllowed(this) ? user.getTranslation("protection.panel.flag-item.setting-active")
+                    : user.getTranslation("protection.panel.flag-item.setting-disabled");
+            pib.description(user.getTranslation("protection.panel.flag-item.setting-layout", TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())
+                    , "[setting]", islandSetting));
+        }
+        return pib;
+    }
+
+    private PanelItemBuilder createProtectionFlag(BentoBox plugin, User user, Island island, PanelItemBuilder pib) {
+        if (island != null) {
+            // Protection flag
+            pib.description(user.getTranslation("protection.panel.flag-item.description-layout",
+                    TextVariables.DESCRIPTION, user.getTranslation(getDescriptionReference())));
+            plugin.getRanksManager().getRanks().forEach((reference, score) -> {
+                if (score > RanksManager.BANNED_RANK && score < island.getFlag(this)) {
+                    pib.description(user.getTranslation("protection.panel.flag-item.blocked-rank") + user.getTranslation(reference));
+                } else if (score <= RanksManager.OWNER_RANK && score > island.getFlag(this)) {
+                    pib.description(user.getTranslation("protection.panel.flag-item.allowed-rank") + user.getTranslation(reference));
+                } else if (score == island.getFlag(this)) {
+                    pib.description(user.getTranslation("protection.panel.flag-item.minimal-rank") + user.getTranslation(reference));
+                }
+            });
+        }
+        return pib;
+    }
 
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
@@ -483,4 +496,5 @@ public class Flag implements Comparable<Flag> {
             return new Flag(this);
         }
     }
+
 }
