@@ -1,4 +1,4 @@
-# BentoBox Configuration 1.4.0
+# BentoBox Configuration 1.5.0-SNAPSHOT
 # This config file is dynamic and is updated right after BentoBox loaded its settings from it.
 # You can edit it while the server is online and you can do '/bbox reload' to take the changes into account.
 # However, it is a better practice to edit this file while the server is offline.
@@ -11,13 +11,17 @@ general:
   # If there is no economy plugin present anyway, money will be automatically disabled.
   use-economy: true
   database:
-    # YAML, JSON, MYSQL, MARIADB (10.2.3+), MONGODB.
-    # YAML and JSON are both file-based databases.
+    # JSON, MYSQL, MARIADB (10.2.3+), MONGODB, and YAML(deprecated).
+    # Transition database options are:
+    #   YAML2JSON, YAML2MARIADB, YAML2MYSQL
+    #   JSON2YAML, JSON2MARIADB, JSON2MYSQL
+    #   MYSQL2JSON, MYSQL2YAML
+    # If you need others, make a feature request.
+    # Transition options enable migration from one database type to another. Use /bbox migrate.
     # MYSQL might not work with all implementations: if available, use a dedicated database type (e.g. MARIADB).
     # If you use MONGODB, you must also run the BSBMongo plugin (not addon).
     # See https://github.com/tastybento/bsbMongo/releases/.
-    # /!\ BentoBox currently does not support changing this value mid-game. If you do need to change it, do a full reset of your databases and worlds.
-    type: YAML
+    type: JSON
     host: localhost
     # Port 3306 is MySQL's default. Port 27017 is MongoDB's default.
     port: 3306
@@ -32,7 +36,7 @@ general:
   # Add other fake player names here if required
   # /!\ This feature is experimental and might not work as expected or might not work at all.
   fakeplayers:
-  - '[CoFH]'
+    - '[CoFH]'
   # Rank required to use a command. e.g., use the invite command. Default is owner rank is required.
   # /!\ This feature is experimental and might not work as expected or might not work at all.
   rank-command: {}
@@ -76,7 +80,7 @@ island:
     # These set the minimum and maximum size of a name.
     min-length: 4
     max-length: 20
-  # Number of blocks to paste per tick when pasting a schem
+  # Number of blocks to paste per tick when pasting blueprints
   # Smaller values will help reduce noticeable lag but will make pasting take longer
   paste-speed: 1000
 web:
@@ -84,4 +88,18 @@ web:
   # bStats has nearly no effect on your server's performance and the sent data is completely
   # anonymous so please consider twice if you really want to disable it.
   metrics: true
+  github:
+    # Toggle whether BentoBox can connect to GitHub to get data about updates and addons.
+    # Disabling this will result in the deactivation of the update checker and of some other
+    # features that rely on the data downloaded from the GitHub API.
+    # It does not send any data.
+    # Added since 1.5.0.
+    download-data: true
+    # Time in minutes between each connection to the GitHub API.
+    # This allows for up-to-the-minute information gathering.
+    # However, as the GitHub API data does not get updated instantly, it is recommended to keep
+    # this value greater than 15 minutes.
+    # Setting this to 0 will make BentoBox download data only at startup.
+    # Added since 1.5.0.
+    connection-interval: 10
 uniqueId: config

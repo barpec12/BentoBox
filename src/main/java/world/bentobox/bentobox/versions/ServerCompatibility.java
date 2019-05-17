@@ -1,11 +1,10 @@
 package world.bentobox.bentobox.versions;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Server;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 
-import world.bentobox.bentobox.BentoBox;
+import java.util.Arrays;
 
 /**
  * Checks and ensures the current server software is compatible with BentoBox.
@@ -94,7 +93,15 @@ public class ServerCompatibility {
     public enum ServerVersion {
         V1_13(Compatibility.NOT_SUPPORTED),
         V1_13_1(Compatibility.NOT_SUPPORTED),
-        V1_13_2(Compatibility.COMPATIBLE);
+        V1_13_2(Compatibility.COMPATIBLE),
+        /**
+         * @since 1.5.0
+         */
+        V1_14(Compatibility.NOT_SUPPORTED),
+        /**
+         * @since 1.5.0
+         */
+        V1_14_1(Compatibility.NOT_SUPPORTED);
 
         private Compatibility compatibility;
 
@@ -116,13 +123,12 @@ public class ServerCompatibility {
     /**
      * Checks the compatibility with the current server software and returns the {@link Compatibility}.
      * Note this is a one-time calculation: further calls won't change the result.
-     * @param plugin BentoBox instance to provide.
      * @return the {@link Compatibility}.
      */
-    public Compatibility checkCompatibility(BentoBox plugin) {
+    public Compatibility checkCompatibility() {
         if (result == null) {
             // Check the server version first
-            ServerVersion version = getServerVersion(Bukkit.getServer());
+            ServerVersion version = getServerVersion();
 
             if (version == null || version.getCompatibility().equals(Compatibility.INCOMPATIBLE)) {
                 // 'Version = null' means that it's not listed. And therefore, it's implicitly incompatible.
@@ -131,7 +137,7 @@ public class ServerCompatibility {
             }
 
             // Now, check the server software
-            ServerSoftware software = getServerSoftware(Bukkit.getServer());
+            ServerSoftware software = getServerSoftware();
 
             if (software == null || software.getCompatibility().equals(Compatibility.INCOMPATIBLE)) {
                 // 'software = null' means that it's not listed. And therefore, it's implicitly incompatible.
@@ -159,13 +165,12 @@ public class ServerCompatibility {
 
     /**
      * Returns the {@link ServerSoftware} entry corresponding to the current server software, may be null.
-     * @param server the {@link Server} instance, must not be null.
      * @return the {@link ServerSoftware} run by this server or null.
      * @since 1.3.0
      */
     @Nullable
-    public ServerSoftware getServerSoftware(@NonNull Server server) {
-        String serverSoftware = server.getVersion().substring(4).split("-")[0];
+    public ServerSoftware getServerSoftware() {
+        String serverSoftware = Bukkit.getServer().getVersion().substring(4).split("-")[0];
         try {
             return ServerSoftware.valueOf(serverSoftware.toUpperCase());
         } catch (IllegalArgumentException e) {
@@ -175,17 +180,36 @@ public class ServerCompatibility {
 
     /**
      * Returns the {@link ServerVersion} entry corresponding to the current server software, may be null.
-     * @param server the {@link Server} instance, must not be null.
      * @return the {@link ServerVersion} run by this server or null.
      * @since 1.3.0
      */
     @Nullable
-    public ServerVersion getServerVersion(@NonNull Server server) {
-        String serverVersion = server.getBukkitVersion().split("-")[0].replace(".", "_");
+    public ServerVersion getServerVersion() {
+        String serverVersion = Bukkit.getServer().getBukkitVersion().split("-")[0].replace(".", "_");
         try {
             return ServerVersion.valueOf("V" + serverVersion.toUpperCase());
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /**
+     * Returns whether the server runs on the specified versions.
+     * @param versions the {@link ServerVersion}s to check.
+     * @return {@code true} if the server runs on one of the specified versions, {@code false} otherwise.
+     * @since 1.5.0
+     */
+    public boolean isVersion(@NonNull ServerVersion... versions) {
+        return Arrays.asList(versions).contains(getServerVersion());
+    }
+
+    /**
+     * Returns whether the server runs on the specified softwares.
+     * @param softwares the {@link ServerSoftware}s to check.
+     * @return {@code true} if the server runs on on of these softwares, {@code false} otherwise.
+     * @since 1.5.0
+     */
+    public boolean isSoftware(@NonNull ServerSoftware... softwares) {
+        return Arrays.asList(softwares).contains(getServerSoftware());
     }
 }

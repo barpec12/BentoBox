@@ -1,10 +1,12 @@
 name: BentoBox
 main: world.bentobox.bentobox.BentoBox
-version: ${project.version}
+version: ${project.version}${build.number}
 api-version: 1.13
 
 authors: [tastybento, Poslovitch]
 website: https://bentobox.world
+
+load: STARTUP
 
 loadbefore: [Multiverse-Core, Residence]
 

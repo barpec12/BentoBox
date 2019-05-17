@@ -14,7 +14,7 @@ import world.bentobox.bentobox.util.Util;
 
 /**
  * Defines the addon as a game mode.
- * A game mode creates worlds, registers world settings and has schems in a jar folder.
+ * A game mode creates worlds, registers world settings and has blueprints in a jar folder.
  * @author tastybento, Poslovitch
  */
 public abstract class GameModeAddon extends Addon {
@@ -123,10 +123,11 @@ public abstract class GameModeAddon extends Addon {
     @NonNull
     public abstract ChunkGenerator getDefaultWorldGenerator(String worldName, String id);
 
-	/**
-	 * Tells the Game Mode Addon to save its settings. Used when world settings are changed
-	 * in-game and need to be saved.
-	 * @since 1.4.0
-	 */
-	public abstract void saveWorldSettings();
+    /**
+     * Tells the Game Mode Addon to save its settings. Used when world settings are changed
+     * in-game and need to be saved.
+     * @since 1.4.0
+     */
+    public abstract void saveWorldSettings();
+
 }

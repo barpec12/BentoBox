@@ -1,6 +1,16 @@
 package world.bentobox.bentobox.managers;
 
-import com.google.common.collect.ImmutableMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -19,6 +29,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+
+import com.google.common.collect.ImmutableMap;
+
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.events.IslandBaseEvent;
 import world.bentobox.bentobox.api.events.island.IslandEvent;
@@ -34,17 +47,6 @@ import world.bentobox.bentobox.managers.island.IslandCache;
 import world.bentobox.bentobox.util.DeleteIslandChunks;
 import world.bentobox.bentobox.util.Util;
 import world.bentobox.bentobox.util.teleport.SafeSpotTeleport;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * The job of this class is manage all island related data.
@@ -224,13 +226,13 @@ public class IslandsManager {
         }
 
         if (ground.getType().equals(Material.CACTUS) || ground.getType().toString().contains("BOAT") || ground.getType().toString().contains("FENCE")
-                || ground.getType().equals(Material.SIGN) || ground.getType().equals(Material.WALL_SIGN)) {
+                || ground.getType().toString().contains("SIGN")) {
             return false;
         }
         // Check that the space is not solid
         // The isSolid function is not fully accurate (yet) so we have to check a few other items
         // isSolid thinks that PLATEs and SIGNS are solid, but they are not
-        return (!space1.getType().isSolid() || space1.getType().equals(Material.SIGN) || space1.getType().equals(Material.WALL_SIGN)) && (!space2.getType().isSolid() || space2.getType().equals(Material.SIGN) || space2.getType().equals(Material.WALL_SIGN));
+        return (!space1.getType().isSolid() || space1.getType().toString().contains("SIGN")) && (!space2.getType().isSolid() || space2.getType().equals(Material.SIGN) || space2.getType().equals(Material.WALL_SIGN));
     }
 
     /**
@@ -244,7 +246,7 @@ public class IslandsManager {
     }
 
     /**
-     * Create an island with owner. Note this does not create the schematic. It just creates the island data object.
+     * Create an island with owner. Note this does not paste blocks. It just creates the island data object.
      * @param location the location, not null
      * @param owner the island owner UUID, may be null
      * @return Island or null if the island could not be created for some reason
@@ -254,6 +256,7 @@ public class IslandsManager {
         Island island = new Island(location, owner, plugin.getIWM().getIslandProtectionRange(location.getWorld()));
         // Game the gamemode name and prefix the uniqueId
         String gmName = plugin.getIWM().getAddon(location.getWorld()).map(gm -> gm.getDescription().getName()).orElse("");
+        island.setGameMode(gmName);
         island.setUniqueId(gmName + island.getUniqueId());
         while (handler.objectExists(island.getUniqueId())) {
             // This should never happen, so although this is a potential infinite loop I'm going to leave it here because
@@ -366,6 +369,15 @@ public class IslandsManager {
     }
 
     /**
+     * Returns the IslandCache instance.
+     * @return the islandCache
+     * @since 1.5.0
+     */
+    public IslandCache getIslandCache() {
+        return islandCache;
+    }
+
+    /**
      * Used for testing only to inject the islandCache mock object
      * @param islandCache - island cache
      */
@@ -391,7 +403,22 @@ public class IslandsManager {
     }
 
     /**
-     * Returns a set of island member UUID's for the island of playerUUID
+     * Returns a set of island member UUID's for the island of playerUUID of rank <tt>minimumRank</tt>
+     * and above.
+     * This includes the owner of the island. If there is no island, this set will be empty.
+     *
+     * @param world - world to check
+     * @param playerUUID - the player's UUID
+     * @param minimumRank - the minimum rank to be included in the set.
+     * @return Set of team UUIDs
+     */
+    public Set<UUID> getMembers(World world, UUID playerUUID, int minimumRank) {
+        return islandCache.getMembers(world, playerUUID, minimumRank);
+    }
+
+    /**
+     * Returns a set of island member UUID's for the island of playerUUID.
+     * Only includes players of rank {@link RanksManager#MEMBER_RANK} and above.
      * This includes the owner of the island. If there is no island, this set will be empty.
      *
      * @param world - world to check
@@ -399,7 +426,7 @@ public class IslandsManager {
      * @return Set of team UUIDs
      */
     public Set<UUID> getMembers(World world, UUID playerUUID) {
-        return islandCache.getMembers(world, playerUUID);
+        return islandCache.getMembers(world, playerUUID, RanksManager.MEMBER_RANK);
     }
 
     /**
@@ -749,6 +776,11 @@ public class IslandsManager {
                     this.setSpawn(island);
                 }
             }
+
+            // Update some of their fields
+            if (island.getGameMode() == null) {
+                island.setGameMode(plugin.getIWM().getAddon(island.getWorld()).map(gm -> gm.getDescription().getName()).orElse(""));
+            }
         });
         if (!toQuarantine.isEmpty()) {
             plugin.logError(toQuarantine.size() + " islands could not be loaded successfully; moving to trash bin.");
@@ -762,12 +794,12 @@ public class IslandsManager {
      * @param island - island
      * @since 1.3.0
      */
-    public void fixIslandCenter(Island island) {
+    private void fixIslandCenter(Island island) {
         World world = island.getWorld();
         if (world == null || island.getCenter() == null || !plugin.getIWM().inWorld(world)) {
             return;
         }
-        int distance = island.getRange() * 2;
+        int distance = plugin.getIWM().getIslandDistance(island.getWorld()) * 2;
         long x = ((long) island.getCenter().getBlockX()) - plugin.getIWM().getIslandXOffset(world);
         long z = ((long) island.getCenter().getBlockZ()) - plugin.getIWM().getIslandZOffset(world);
         if (x % distance != 0 || z % distance != 0) {

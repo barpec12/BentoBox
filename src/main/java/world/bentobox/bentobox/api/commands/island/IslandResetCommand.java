@@ -2,20 +2,19 @@ package world.bentobox.bentobox.api.commands.island;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.eclipse.jdt.annotation.Nullable;
 
+import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.bentobox.api.commands.CompositeCommand;
 import world.bentobox.bentobox.api.commands.ConfirmableCommand;
 import world.bentobox.bentobox.api.events.island.IslandEvent.Reason;
 import world.bentobox.bentobox.api.localization.TextVariables;
 import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.database.objects.Island;
-import world.bentobox.bentobox.managers.SchemsManager;
 import world.bentobox.bentobox.managers.island.NewIsland;
+import world.bentobox.bentobox.panels.IslandCreationPanel;
 
 /**
  * @author tastybento
@@ -35,7 +34,7 @@ public class IslandResetCommand extends ConfirmableCommand {
     }
 
     @Override
-    public boolean execute(User user, String label, List<String> args) {
+    public boolean canExecute(User user, String label, List<String> args) {
         // Check cooldown
         if (getSettings().getResetCooldown() > 0 && checkCooldown(user, null)) {
             return false;
@@ -53,62 +52,49 @@ public class IslandResetCommand extends ConfirmableCommand {
             user.sendMessage("commands.island.reset.must-remove-members");
             return false;
         }
-        if (getIWM().getResetLimit(getWorld()) >= 0) {
-            int resetsLeft = getIWM().getResetLimit(getWorld()) - getPlayers().getResets(getWorld(), user.getUniqueId());
-            if (resetsLeft <= 0) {
+        int resetsLeft = getPlayers().getResetsLeft(getWorld(), user.getUniqueId());
+        if (resetsLeft != -1) {
+            // Resets are not unlimited here
+            if (resetsLeft == 0) {
+                // No resets allowed
                 user.sendMessage("commands.island.reset.none-left");
                 return false;
             } else {
+                // Still some resets left
                 // Notify how many resets are left
                 user.sendMessage("commands.island.reset.resets-left", TextVariables.NUMBER, String.valueOf(resetsLeft));
             }
         }
 
-        // Default schem is 'island'
-        String name = getSchemName(args);
-        if (name == null) {
-            // The schem name is not valid.
-            user.sendMessage("commands.island.create.unknown-schem");
-            return false;
-        }
+        return true;
+    }
 
+    @Override
+    public boolean execute(User user, String label, List<String> args) {
         // Permission check if the name is not the default one
-        String permission = getPermissionPrefix() + "island.create." + name;
-        if (!name.equals(SchemsManager.DEFAULT_SCHEM_NAME) && !user.hasPermission(permission)) {
-            user.sendMessage("general.errors.no-permission", TextVariables.PERMISSION, permission);
-            return false;
-        }
-
-        // Request confirmation
-        if (getSettings().isResetConfirmation()) {
-            this.askConfirmation(user, () -> resetIsland(user, name));
-            return true;
-        } else {
+        if (!args.isEmpty()) {
+            String name = getPlugin().getBlueprintsManager().validate((GameModeAddon)getAddon(), args.get(0).toLowerCase(java.util.Locale.ENGLISH));
+            if (name == null || name.isEmpty()) {
+                // The blueprint name is not valid.
+                user.sendMessage("commands.island.create.unknown-blueprint");
+                return false;
+            }
+            if (!getPlugin().getBlueprintsManager().checkPerm(getAddon(), user, args.get(0))) {
+                return false;
+            }
             return resetIsland(user, name);
+        } else {
+            // Show panel after confirmation
+            if (getPlugin().getSettings().isResetConfirmation()) {
+                this.askConfirmation(user, () -> getPlugin().getBlueprintsManager().showPanel(this, user, label));
+            } else {
+                getPlugin().getBlueprintsManager().showPanel(this, user, label);
+                //IslandCreationPanel.openPanel(user, (GameModeAddon) getAddon());
+            }
+            return true;
         }
     }
 
-    /**
-     * Returns the schem name from the args.
-     * {@link SchemsManager#DEFAULT_SCHEM_NAME} is the default.
-     * May be null if the schem does not exist.
-     * @param args args of the command
-     * @return schem name or null
-     * @since 1.1
-     */
-    @Nullable
-    private String getSchemName(List<String> args) {
-        if (args.isEmpty()) {
-            return SchemsManager.DEFAULT_SCHEM_NAME;
-        }
-
-        String name = args.get(0).toLowerCase(java.util.Locale.ENGLISH);
-        Set<String> validNames = getPlugin().getSchemsManager().get(getWorld()).keySet();
-        if (!name.equals(SchemsManager.DEFAULT_SCHEM_NAME) && !validNames.contains(name)) {
-            return null;
-        }
-        return name;
-    }
 
     private boolean resetIsland(User user, String name) {
         // Reset the island
@@ -136,6 +122,7 @@ public class IslandResetCommand extends ConfirmableCommand {
             NewIsland.builder()
             .player(user)
             .reason(Reason.RESET)
+            .addon((GameModeAddon)getAddon())
             .oldIsland(oldIsland)
             .name(name)
             .build();

@@ -1,24 +1,7 @@
 package world.bentobox.bentobox.managers;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -50,19 +33,35 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSet.Builder;
-
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.Settings;
 import world.bentobox.bentobox.api.configuration.WorldSettings;
 import world.bentobox.bentobox.api.events.island.IslandEvent.IslandDeleteEvent;
 import world.bentobox.bentobox.api.user.User;
+import world.bentobox.bentobox.database.DatabaseSetup.DatabaseType;
 import world.bentobox.bentobox.database.objects.Island;
 import world.bentobox.bentobox.lists.Flags;
 import world.bentobox.bentobox.managers.island.IslandCache;
 import world.bentobox.bentobox.util.Util;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest( { Bukkit.class, BentoBox.class, Util.class, Location.class })
@@ -104,6 +103,7 @@ public class IslandsManagerTest {
         // Settings
         Settings s = mock(Settings.class);
         when(plugin.getSettings()).thenReturn(s);
+        when(s.getDatabaseType()).thenReturn(DatabaseType.JSON);
 
         // Player
         player = mock(Player.class);
@@ -122,6 +122,10 @@ public class IslandsManagerTest {
         when(plugin.getLocalesManager()).thenReturn(lm);
         when(lm.get(any(), any())).thenReturn("mock translation");
 
+        // Placeholders
+        PlaceholdersManager placeholdersManager = mock(PlaceholdersManager.class);
+        when(plugin.getPlaceholdersManager()).thenReturn(placeholdersManager);
+        when(placeholdersManager.replacePlaceholders(any(), any())).thenReturn("mock translation");
 
         // Has team
         pm = mock(PlayersManager.class);
@@ -363,13 +367,6 @@ public class IslandsManagerTest {
      */
     @Test
     public void testBigScan() {
-        Settings settings = mock(Settings.class);
-
-        when(plugin.getSettings()).thenReturn(settings);
-
-        IslandWorldManager iwm = mock(IslandWorldManager.class);
-        when(plugin.getIWM()).thenReturn(iwm);
-
         IslandsManager manager = new IslandsManager(plugin);
 
         Location location = mock(Location.class);
@@ -623,7 +620,7 @@ public class IslandsManagerTest {
         members.add(UUID.randomUUID());
         members.add(UUID.randomUUID());
         members.add(UUID.randomUUID());
-        when(islandCache.getMembers(Mockito.any(), Mockito.any())).thenReturn(members);
+        when(islandCache.getMembers(Mockito.any(), Mockito.any(), Mockito.anyInt())).thenReturn(members);
         IslandsManager im = new IslandsManager(plugin);
         im.setIslandCache(islandCache);
         assertEquals(members, im.getMembers(world, UUID.randomUUID()));
@@ -1123,78 +1120,4 @@ public class IslandsManagerTest {
         assertEquals(island, im.getIslandById(uuid).get());
     }
 
-    /**
-     * Test method for {@link IslandsManager#fixIslandCenter(Island)}.
-     */
-    @Test
-    public void testFixIslandCenter() {
-        // Setup
-        when(iwm.inWorld(Mockito.any(World.class))).thenReturn(true);
-        when(iwm.getIslandXOffset(Mockito.any())).thenReturn(0);
-        when(iwm.getIslandZOffset(Mockito.any())).thenReturn(0);
-        Island island = mock(Island.class);
-        Location center = mock(Location.class);
-        when(center.getWorld()).thenReturn(world);
-        when(center.getBlockX()).thenReturn(129);
-        when(center.getBlockY()).thenReturn(120);
-        when(center.getBlockZ()).thenReturn(127);
-        when(island.getCenter()).thenReturn(center);
-        when(island.getRange()).thenReturn(64);
-        when(island.getWorld()).thenReturn(world);
-        // Test
-        IslandsManager im = new IslandsManager(plugin);
-        im.fixIslandCenter(island);
-        Location loc = new Location(world, 128, 120, 128);
-        Mockito.verify(island).setCenter(Mockito.eq(loc));
-    }
-
-    /**
-     * Test method for {@link IslandsManager#fixIslandCenter(Island)}.
-     */
-    @Test
-    public void testFixIslandCenterOffsets() {
-        // Setup
-        when(iwm.inWorld(Mockito.any(World.class))).thenReturn(true);
-        when(iwm.getIslandXOffset(Mockito.any())).thenReturn(10);
-        when(iwm.getIslandZOffset(Mockito.any())).thenReturn(10);
-        Island island = mock(Island.class);
-        Location center = mock(Location.class);
-        when(center.getWorld()).thenReturn(world);
-        when(center.getBlockX()).thenReturn(1295);
-        when(center.getBlockY()).thenReturn(120);
-        when(center.getBlockZ()).thenReturn(1295);
-        when(island.getCenter()).thenReturn(center);
-        when(island.getRange()).thenReturn(64);
-        when(island.getWorld()).thenReturn(world);
-        // Test
-        IslandsManager im = new IslandsManager(plugin);
-        im.fixIslandCenter(island);
-        Location loc = new Location(world, 1290, 120, 1290);
-        Mockito.verify(island).setCenter(Mockito.eq(loc));
-    }
-
-    /**
-     * Test method for {@link IslandsManager#fixIslandCenter(Island)}.
-     */
-    @Test
-    public void testFixIslandCenterOffsetsNegatives() {
-        // Setup
-        when(iwm.inWorld(Mockito.any(World.class))).thenReturn(true);
-        when(iwm.getIslandXOffset(Mockito.any())).thenReturn(0);
-        when(iwm.getIslandZOffset(Mockito.any())).thenReturn(0);
-        Island island = mock(Island.class);
-        Location center = mock(Location.class);
-        when(center.getWorld()).thenReturn(world);
-        when(center.getBlockX()).thenReturn(-1295);
-        when(center.getBlockY()).thenReturn(120);
-        when(center.getBlockZ()).thenReturn(-1287);
-        when(island.getCenter()).thenReturn(center);
-        when(island.getRange()).thenReturn(64);
-        when(island.getWorld()).thenReturn(world);
-        // Test
-        IslandsManager im = new IslandsManager(plugin);
-        im.fixIslandCenter(island);
-        Location loc = new Location(world, -1280, 120, -1280);
-        Mockito.verify(island).setCenter(Mockito.eq(loc));
-    }
 }

@@ -1,16 +1,16 @@
 package world.bentobox.bentobox;
 
+import world.bentobox.bentobox.api.configuration.ConfigComment;
+import world.bentobox.bentobox.api.configuration.ConfigEntry;
+import world.bentobox.bentobox.api.configuration.ConfigObject;
+import world.bentobox.bentobox.api.configuration.StoreAt;
+import world.bentobox.bentobox.database.DatabaseSetup.DatabaseType;
+import world.bentobox.bentobox.managers.RanksManager;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import world.bentobox.bentobox.api.configuration.ConfigComment;
-import world.bentobox.bentobox.api.configuration.ConfigEntry;
-import world.bentobox.bentobox.api.configuration.StoreAt;
-import world.bentobox.bentobox.database.DatabaseSetup.DatabaseType;
-import world.bentobox.bentobox.database.objects.DataObject;
-import world.bentobox.bentobox.managers.RanksManager;
 
 /**
  * All the plugin settings are here
@@ -21,7 +21,7 @@ import world.bentobox.bentobox.managers.RanksManager;
 @ConfigComment("This config file is dynamic and is updated right after BentoBox loaded its settings from it.")
 @ConfigComment("You can edit it while the server is online and you can do '/bbox reload' to take the changes into account.")
 @ConfigComment("However, it is a better practice to edit this file while the server is offline.")
-public class Settings implements DataObject {
+public class Settings implements ConfigObject {
 
     // ---------------------------------------------
 
@@ -38,13 +38,18 @@ public class Settings implements DataObject {
     private boolean useEconomy = true;
 
     // Database
-    @ConfigComment("YAML, JSON, MYSQL, MARIADB (10.2.3+), MONGODB.")
-    @ConfigComment("YAML and JSON are both file-based databases.")
+    @ConfigComment("JSON, MYSQL, MARIADB (10.2.3+), MONGODB, and YAML(deprecated).")
+    @ConfigComment("Transition database options are:")
+    @ConfigComment("  YAML2JSON, YAML2MARIADB, YAML2MYSQL")
+    @ConfigComment("  JSON2MARIADB, JSON2MYSQL, MYSQL2JSON")
+    @ConfigComment("If you need others, please make a feature request.")
+    @ConfigComment("Transition options enable migration from one database type to another. Use /bbox migrate.")
+    @ConfigComment("YAML and JSON are file-based databases.")
     @ConfigComment("MYSQL might not work with all implementations: if available, use a dedicated database type (e.g. MARIADB).")
     @ConfigComment("If you use MONGODB, you must also run the BSBMongo plugin (not addon).")
     @ConfigComment("See https://github.com/tastybento/bsbMongo/releases/.")
-    @ConfigEntry(path = "general.database.type", needsReset = true)
-    private DatabaseType databaseType = DatabaseType.YAML;
+    @ConfigEntry(path = "general.database.type")
+    private DatabaseType databaseType = DatabaseType.JSON;
 
     @ConfigEntry(path = "general.database.host")
     private String databaseHost = "localhost";
@@ -74,7 +79,7 @@ public class Settings implements DataObject {
     private Set<String> fakePlayers = new HashSet<>();
 
     @ConfigComment("Rank required to use a command. e.g., use the invite command. Default is owner rank is required.")
-    @ConfigEntry(path = "general.rank-command", experimental = true)
+    @ConfigEntry(path = "general.rank-command")
     private Map<String, Integer> rankCommand = new HashMap<>();
 
     @ConfigEntry(path = "panel.close-on-click-outside")
@@ -138,7 +143,7 @@ public class Settings implements DataObject {
     @ConfigEntry(path = "island.name.max-length")
     private int nameMaxLength = 20;
 
-    @ConfigComment("Number of blocks to paste per tick when pasting a schem")
+    @ConfigComment("Number of blocks to paste per tick when pasting blueprints")
     @ConfigComment("Smaller values will help reduce noticeable lag but will make pasting take longer")
     @ConfigEntry(path = "island.paste-speed")
     private int pasteSpeed = 1000;
@@ -173,33 +178,22 @@ public class Settings implements DataObject {
     @ConfigComment("Disabling this will result in the deactivation of the update checker and of some other")
     @ConfigComment("features that rely on the data downloaded from the GitHub API.")
     @ConfigComment("It does not send any data.")
-    @ConfigEntry(path = "web.github.download-data", since = "1.3.0", hidden = true)
-    private boolean githubDownloadData = false; // Set as false for now so it disables the whole GitHub thing.
+    @ConfigEntry(path = "web.github.download-data", since = "1.5.0")
+    private boolean githubDownloadData = true;
 
     @ConfigComment("Time in minutes between each connection to the GitHub API.")
     @ConfigComment("This allows for up-to-the-minute information gathering.")
-    @ConfigComment("However, as the GitHub API data does not get updated instantly, it is recommended to keep")
-    @ConfigComment("this value greater than 15 minutes.")
+    @ConfigComment("However, as the GitHub API data does not get updated instantly,")
+    @ConfigComment("this value cannot be set less than 15 minutes.")
     @ConfigComment("Setting this to 0 will make BentoBox download data only at startup.")
-    @ConfigEntry(path = "web.github.connection-interval", since = "1.3.0", hidden = true)
+    @ConfigEntry(path = "web.github.connection-interval", since = "1.5.0")
     private int githubConnectionInterval = 60;
-
-    @ConfigComment("Toggle whether the downloaded data should be flushed to files.")
-    @ConfigComment("It helps to prevent previously downloaded data being lost due to a more recent connection that failed")
-    @ConfigComment("to connect to the GitHub API.")
-    @ConfigComment("Such files are stored in JSON format and do not usually take up more than a few kilobytes of disk space each.")
-    @ConfigEntry(path = "web.github.flush-data-to-files", since = "1.3.0", hidden = true)
-    private boolean githubFlushDataToFiles = true;
 
     @ConfigEntry(path = "web.updater.check-updates.bentobox", since = "1.3.0", hidden = true)
     private boolean checkBentoBoxUpdates = true;
 
     @ConfigEntry(path = "web.updater.check-updates.addons", since = "1.3.0", hidden = true)
     private boolean checkAddonsUpdates = true;
-
-    //---------------------------------------------------------------------------------------/
-    @ConfigComment("These settings should not be edited")
-    private String uniqueId = "config";
 
     //---------------------------------------------------------------------------------------/
     // Getters and setters
@@ -442,22 +436,6 @@ public class Settings implements DataObject {
         this.autoOwnershipTransferIgnoreRanks = autoOwnershipTransferIgnoreRanks;
     }
 
-    /**
-     * @return the uniqueId
-     */
-    @Override
-    public String getUniqueId() {
-        return uniqueId;
-    }
-
-    /**
-     * @param uniqueId the uniqueId to set
-     */
-    @Override
-    public void setUniqueId(String uniqueId) {
-        this.uniqueId = uniqueId;
-    }
-
     public boolean isLogCleanSuperFlatChunks() {
         return logCleanSuperFlatChunks;
     }
@@ -488,14 +466,6 @@ public class Settings implements DataObject {
 
     public void setGithubConnectionInterval(int githubConnectionInterval) {
         this.githubConnectionInterval = githubConnectionInterval;
-    }
-
-    public boolean isGithubFlushDataToFiles() {
-        return githubFlushDataToFiles;
-    }
-
-    public void setGithubFlushDataToFiles(boolean githubFlushDataToFiles) {
-        this.githubFlushDataToFiles = githubFlushDataToFiles;
     }
 
     public boolean isCheckBentoBoxUpdates() {

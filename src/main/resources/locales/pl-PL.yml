@@ -25,14 +25,13 @@ general:
     player-has-island: "&cGracz ma już wyspę!"
     player-has-no-island: "&cTen gracz nie ma wyspy!"
     already-have-island: "&cMasz już wyspę!"
-    no-safe-location: "&cNa wyspie nie znaleziono bezpiecznej lokalizacji!"
+    no-safe-location-found: "&cNa wyspie nie znaleziono bezpiecznej lokalizacji!"
     not-owner: "&cNie jesteś liderem swojej wyspy!"
     not-in-team: "&cTen gracz nie jest w twojej drużynie."
     offline-player: "&cTen gracz jest offline lub nie istnieje."
     unknown-player: "&cNieznany gracz!"
     general: "&cTo polecenie nie jest jeszcze gotowe - skontaktuj się z administratorem"
     unknown-command: "&cNieznane polecenie. Wpisz &b/[label] help &caby wyświetlić pomoc."
-    warp-not-safe: "&cTen warp nie jest teraz bezpieczny!"
     wrong-world: "&cNie jesteś we właściwym świecie, aby to zrobić!"
     you-must-wait: "&cMusisz poczekać [number]s, zanim będziesz mógł wykonać to polecenie ponownie."
     you-need: "&cPotrzebujesz [permission]"
@@ -122,10 +121,10 @@ commands:
       description: "ustawia role gracza na swojej wyspie"
       unknown-rank: "&cNieznana rola!"
       rank-set: "&aRola ustawiona z [from] na [to]."
-    schem:
+    blueprint:
       parameters: "<load><copy><paste><pos1><pos2><save>"
-      description: "manipuluj schematem"
-      copy-first: "&cNajpierw skopiuj schemat!"
+      description: "manipuluj blueprint"
+      copy-first: "&cNajpierw skopiuj blueprint!"
       file-exists: "&cPlik już istnieje, nadpisać?"
       no-such-file: "&cNie ma takiego pliku!"
       could-not-load: "&cNie można załadować tego pliku!"
@@ -547,6 +546,3 @@ language:
   panel-title: "Wybierz swój język"
   selected: "&aObecnie wybrany."
   edited: "&aZmieniono język na &e[lang]&a."
-
-schems:
-  panel-title: "Wybierz swój schemat wyspy"

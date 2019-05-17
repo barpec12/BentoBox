@@ -1,5 +1,8 @@
 package world.bentobox.bentobox.hooks;
 
+import me.clip.placeholderapi.PlaceholderAPI;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.eclipse.jdt.annotation.NonNull;
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.Addon;
@@ -22,7 +25,7 @@ public class PlaceholderAPIHook extends Hook {
     private Map<Addon, AddonPlaceholderExpansion> addonsExpansions;
 
     public PlaceholderAPIHook() {
-        super("PlaceholderAPI");
+        super("PlaceholderAPI", Material.NAME_TAG);
         this.addonsExpansions = new HashMap<>();
     }
 
@@ -40,14 +43,6 @@ public class PlaceholderAPIHook extends Hook {
     @Override
     public String getFailureCause() {
         return "could not register BentoBox's expansion";
-    }
-
-    /**
-     * @deprecated As of 1.4.0, renamed to {@link #registerPlaceholder(String, PlaceholderReplacer)}.
-     */
-    @Deprecated
-    public void registerBentoBoxPlaceholder(String placeholder, PlaceholderReplacer replacer) {
-        registerPlaceholder(placeholder, replacer);
     }
 
     /**
@@ -99,14 +94,6 @@ public class PlaceholderAPIHook extends Hook {
             addonsExpansions.get(addon).unregisterPlaceholder(placeholder);
         }
     }
-
-    /**
-     * @deprecated As of 1.4.0, renamed to {@link #registerPlaceholder(Addon, String, PlaceholderReplacer)}.
-     */
-    @Deprecated
-    public void registerAddonPlaceholder(Addon addon, String placeholder, PlaceholderReplacer replacer) {
-        registerPlaceholder(addon, placeholder, replacer);
-    }
     
     /**
      * Checks if a placeholder with this name is already registered
@@ -117,5 +104,17 @@ public class PlaceholderAPIHook extends Hook {
      */
     public boolean isPlaceholder(@NonNull Addon addon, @NonNull String placeholder) {
     	return addonsExpansions.containsKey(addon) && addonsExpansions.get(addon).isPlaceholder(placeholder);
+    }
+
+    /**
+     * Replaces the placeholders in this String and returns it.
+     * @param player the Player to get the placeholders for.
+     * @param string the String to replace the placeholders in.
+     * @return the String with placeholders replaced, or the identical String if no placeholders were available.
+     * @since 1.5.0
+     */
+    @NonNull
+    public String replacePlaceholders(@NonNull Player player, @NonNull String string) {
+        return PlaceholderAPI.setPlaceholders(player, string);
     }
 }

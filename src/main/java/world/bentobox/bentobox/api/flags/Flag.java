@@ -6,6 +6,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.eclipse.jdt.annotation.NonNull;
 import world.bentobox.bentobox.BentoBox;
+import world.bentobox.bentobox.api.addons.Addon;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.bentobox.api.configuration.WorldSettings;
 import world.bentobox.bentobox.api.flags.clicklisteners.CycleClick;
@@ -74,22 +75,7 @@ public class Flag implements Comparable<Flag> {
     private final PanelItem.ClickHandler clickHandler;
     private final boolean subPanel;
     private Set<GameModeAddon> gameModes = new HashSet<>();
-
-    /**
-     * {@link Flag.Builder} should be used instead. This is only used for testing.
-     */
-    Flag(String id, Material icon, Listener listener, Type type, int defaultRank, PanelItem.ClickHandler clickListener, boolean subPanel, GameModeAddon gameModeAddon) {
-        this.id = id;
-        this.icon = icon;
-        this.listener = listener;
-        this.type = type;
-        this.defaultRank = defaultRank;
-        this.clickHandler = clickListener;
-        this.subPanel = subPanel;
-        if (gameModeAddon != null) {
-            this.gameModes.add(gameModeAddon);
-        }
-    }
+    private final Addon addon;
 
     private Flag(Builder builder) {
         this.id = builder.id;
@@ -103,6 +89,7 @@ public class Flag implements Comparable<Flag> {
         if (builder.gameModeAddon != null) {
             this.gameModes.add(builder.gameModeAddon);
         }
+        this.addon = builder.addon;
     }
 
     public String getID() {
@@ -183,6 +170,15 @@ public class Flag implements Comparable<Flag> {
      */
     public boolean hasSubPanel() {
         return subPanel;
+    }
+
+    /**
+     * Get the addon that made this flag
+     * @return the addon
+     * @since 1.5.0
+     */
+    public Addon getAddon() {
+        return addon;
     }
 
     /* (non-Javadoc)
@@ -300,14 +296,14 @@ public class Flag implements Comparable<Flag> {
         }
         Island island = plugin.getIslands().getIslandAt(user.getLocation()).orElse(plugin.getIslands().getIsland(user.getWorld(), user.getUniqueId()));
         switch(getType()) {
-        case PROTECTION:
-            return createProtectionFlag(plugin, user, island, pib).build();
-        case SETTING:
-            return createSettingFlag(user, island, pib).build();
-        case WORLD_SETTING:
-            return createWorldSettingFlag(user, pib).build();
-        default:
-            return pib.build();
+            case PROTECTION:
+                return createProtectionFlag(plugin, user, island, pib).build();
+            case SETTING:
+                return createSettingFlag(user, island, pib).build();
+            case WORLD_SETTING:
+                return createWorldSettingFlag(user, pib).build();
+            default:
+                return pib.build();
         }
     }
 
@@ -347,13 +343,10 @@ public class Flag implements Comparable<Flag> {
         return pib;
     }
 
-    /* (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
+
     @Override
     public String toString() {
-        return "Flag [id=" + id + ", icon=" + icon + ", listener=" + listener + ", type=" + type + ", defaultSetting="
-                + setting + ", defaultRank=" + defaultRank + ", clickHandler=" + clickHandler + ", subPanel=" + subPanel + "]";
+        return "Flag [id=" + id + "]";
     }
 
     @Override
@@ -388,6 +381,7 @@ public class Flag implements Comparable<Flag> {
 
         // GameModeAddon
         private GameModeAddon gameModeAddon;
+        private Addon addon;
 
         /**
          * Builder for making flags
@@ -463,10 +457,21 @@ public class Flag implements Comparable<Flag> {
         /**
          * Make this flag specific to this gameMode
          * @param gameModeAddon
-         * @return
+         * @return Builder
          */
         public Builder setGameMode(GameModeAddon gameModeAddon) {
             this.gameModeAddon = gameModeAddon;
+            return this;
+        }
+
+        /**
+         * The addon registering this flag. Ensure this is set to enable the addon to be reloaded.
+         * @param addon
+         * @return Builder
+         * @since 1.5.0
+         */
+        public Builder addon(Addon addon) {
+            this.addon = addon;
             return this;
         }
 
@@ -478,18 +483,18 @@ public class Flag implements Comparable<Flag> {
             // If no clickHandler has been set, then apply default ones
             if (clickHandler == null) {
                 switch (type){
-                case PROTECTION:
-                    clickHandler = new CycleClick(id);
-                    break;
-                case SETTING:
-                    clickHandler = new IslandToggleClick(id);
-                    break;
-                case WORLD_SETTING:
-                    clickHandler = new WorldToggleClick(id);
-                    break;
-                default:
-                    clickHandler = new CycleClick(id);
-                    break;
+                    case PROTECTION:
+                        clickHandler = new CycleClick(id);
+                        break;
+                    case SETTING:
+                        clickHandler = new IslandToggleClick(id);
+                        break;
+                    case WORLD_SETTING:
+                        clickHandler = new WorldToggleClick(id);
+                        break;
+                    default:
+                        clickHandler = new CycleClick(id);
+                        break;
                 }
             }
 

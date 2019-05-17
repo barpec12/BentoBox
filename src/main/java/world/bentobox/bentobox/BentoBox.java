@@ -16,6 +16,7 @@ import world.bentobox.bentobox.api.localization.TextVariables;
 import world.bentobox.bentobox.api.user.Notifier;
 import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.commands.BentoBoxCommand;
+import world.bentobox.bentobox.hooks.DynmapHook;
 import world.bentobox.bentobox.hooks.MultiverseCoreHook;
 import world.bentobox.bentobox.hooks.PlaceholderAPIHook;
 import world.bentobox.bentobox.hooks.VaultHook;
@@ -28,9 +29,9 @@ import world.bentobox.bentobox.listeners.PanelListenerManager;
 import world.bentobox.bentobox.listeners.PortalTeleportationListener;
 import world.bentobox.bentobox.listeners.StandardSpawnProtectionListener;
 import world.bentobox.bentobox.managers.AddonsManager;
+import world.bentobox.bentobox.managers.BlueprintsManager;
 import world.bentobox.bentobox.managers.CommandsManager;
 import world.bentobox.bentobox.managers.FlagsManager;
-import world.bentobox.bentobox.managers.GameModePlaceholderManager;
 import world.bentobox.bentobox.managers.HooksManager;
 import world.bentobox.bentobox.managers.IslandDeletionManager;
 import world.bentobox.bentobox.managers.IslandWorldManager;
@@ -39,7 +40,6 @@ import world.bentobox.bentobox.managers.LocalesManager;
 import world.bentobox.bentobox.managers.PlaceholdersManager;
 import world.bentobox.bentobox.managers.PlayersManager;
 import world.bentobox.bentobox.managers.RanksManager;
-import world.bentobox.bentobox.managers.SchemsManager;
 import world.bentobox.bentobox.managers.WebManager;
 import world.bentobox.bentobox.util.heads.HeadGetter;
 import world.bentobox.bentobox.versions.ServerCompatibility;
@@ -62,7 +62,7 @@ public class BentoBox extends JavaPlugin {
     private FlagsManager flagsManager;
     private IslandWorldManager islandWorldManager;
     private RanksManager ranksManager;
-    private SchemsManager schemsManager;
+    private BlueprintsManager blueprintsManager;
     private HooksManager hooksManager;
     private PlaceholdersManager placeholdersManager;
     private IslandDeletionManager islandDeletionManager;
@@ -84,19 +84,19 @@ public class BentoBox extends JavaPlugin {
 
     @Override
     public void onEnable(){
-        if (!ServerCompatibility.getInstance().checkCompatibility(this).isCanLaunch()) {
+        if (!ServerCompatibility.getInstance().checkCompatibility().isCanLaunch()) {
             // The server's most likely incompatible.
             // Show a warning
-            getServer().getLogger().warning("************ Disclaimer **************");
-            getServer().getLogger().warning("BentoBox may not be compatible with this server!");
-            getServer().getLogger().warning("BentoBox is tested only on the latest version of Spigot.");
-            return;
+            logWarning("************ Disclaimer **************");
+            logWarning("BentoBox may not be compatible with this server!");
+            logWarning("BentoBox is tested only on the latest version of Spigot.");
+            logWarning("**************************************");
         }
 
         // Not loaded
         isLoaded = false;
         // Store the current millis time so we can tell how many ms it took for BSB to fully load.
-        final long startMillis = System.currentTimeMillis();
+        final long loadStart = System.currentTimeMillis();
 
         // Save the default config from config.yml
         saveDefaultConfig();
@@ -109,7 +109,7 @@ public class BentoBox extends JavaPlugin {
             return;
         }
         // Saving the config now.
-        new Config<>(this, Settings.class).saveConfigObject(settings);
+        saveConfig();
 
         // Start Database managers
         playersManager = new PlayersManager(this);
@@ -134,8 +134,9 @@ public class BentoBox extends JavaPlugin {
 
         // Start Island Worlds Manager
         islandWorldManager = new IslandWorldManager(this);
-        // Load schems manager
-        schemsManager = new SchemsManager(this);
+
+        // Load blueprints manager
+        blueprintsManager = new BlueprintsManager(this);
 
         // Locales manager must be loaded before addons
         localesManager = new LocalesManager(this);
@@ -143,21 +144,25 @@ public class BentoBox extends JavaPlugin {
         // Load hooks
         hooksManager = new HooksManager(this);
         hooksManager.registerHook(new VaultHook());
-        hooksManager.registerHook(new PlaceholderAPIHook());
-        // Setup the Placeholders manager
-        placeholdersManager = new PlaceholdersManager(this);
 
         // Load addons. Addons may load worlds, so they must go before islands are loaded.
         addonsManager = new AddonsManager(this);
         addonsManager.loadAddons();
-        // Enable addons
-        addonsManager.enableAddons();
-        
-        // Register default gamemode placeholders
-        GameModePlaceholderManager gmp = new GameModePlaceholderManager(this);
-        addonsManager.getGameModeAddons().forEach(gmp::registerGameModePlaceholders);
+
+        final long loadTime = System.currentTimeMillis() - loadStart;
 
         getServer().getScheduler().runTask(instance, () -> {
+            final long enableStart = System.currentTimeMillis();
+            hooksManager.registerHook(new PlaceholderAPIHook());
+            // Setup the Placeholders manager
+            placeholdersManager = new PlaceholdersManager(this);
+
+            // Enable addons
+            addonsManager.enableAddons();
+
+            // Register default gamemode placeholders
+            addonsManager.getGameModeAddons().forEach(placeholdersManager::registerDefaultPlaceholders);
+
             // Register Listeners
             registerListeners();
 
@@ -184,13 +189,17 @@ public class BentoBox extends JavaPlugin {
             hooksManager.registerHook(new MultiverseCoreHook());
             islandWorldManager.registerWorldsToMultiverse();
 
+            // Register additional hooks
+            hooksManager.registerHook(new DynmapHook());
+
             webManager = new WebManager(this);
-            webManager.requestGitHubData();
+
+            final long enableTime = System.currentTimeMillis() - enableStart;
 
             // Show banner
             User.getInstance(Bukkit.getConsoleSender()).sendMessage("successfully-loaded",
                     TextVariables.VERSION, instance.getDescription().getVersion(),
-                    "[time]", String.valueOf(System.currentTimeMillis() - startMillis));
+                    "[time]", String.valueOf(loadTime + enableTime));
 
             // Fire plugin ready event - this should go last after everything else
             isLoaded = true;
@@ -330,6 +339,11 @@ public class BentoBox extends JavaPlugin {
         return true;
     }
 
+    @Override
+    public void saveConfig() {
+        if (settings != null) new Config<>(this, Settings.class).saveConfigObject(settings);
+    }
+
     /**
      * @return the notifier
      */
@@ -371,10 +385,12 @@ public class BentoBox extends JavaPlugin {
     }
 
     /**
-     * @return the schemsManager
+     * Returns the instance of the {@link BlueprintsManager}.
+     * @return the {@link BlueprintsManager}.
+     * @since 1.5.0
      */
-    public SchemsManager getSchemsManager() {
-        return schemsManager;
+    public BlueprintsManager getBlueprintsManager() {
+        return blueprintsManager;
     }
 
     /**
@@ -425,13 +441,21 @@ public class BentoBox extends JavaPlugin {
         return Optional.ofNullable(metrics);
     }
 
+    /**
+     * @return the {@link WebManager}.
+     * @since 1.5.0
+     */
+    public WebManager getWebManager() {
+        return webManager;
+    }
+
     // Overriding default JavaPlugin methods
 
     /* (non-Javadoc)
      * @see org.bukkit.plugin.java.JavaPlugin#getDefaultWorldGenerator(java.lang.String, java.lang.String)
      */
     @Override
-    public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
+    public ChunkGenerator getDefaultWorldGenerator(@NonNull String worldName, String id) {
         return addonsManager.getDefaultWorldGenerator(worldName, id);
     }
 

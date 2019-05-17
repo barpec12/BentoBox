@@ -1,9 +1,9 @@
 package world.bentobox.bentobox.commands;
 
-import java.util.List;
-
 import world.bentobox.bentobox.api.commands.CompositeCommand;
 import world.bentobox.bentobox.api.user.User;
+
+import java.util.List;
 
 public class BentoBoxCommand extends CompositeCommand {
 
@@ -19,7 +19,14 @@ public class BentoBoxCommand extends CompositeCommand {
         setPermission("bentobox.admin");
         new BentoBoxVersionCommand(this);
         new BentoBoxAboutCommand(this);
+        new BentoBoxManageCommand(this);
+        new BentoBoxCatalogCommand(this);
         new BentoBoxReloadCommand(this);
+        new BentoBoxLocaleCommand(this);
+        // Database names with a 2 in them are migration databases
+        if (getPlugin().getSettings().getDatabaseType().name().contains("2")) {
+            new BentoBoxMigrateCommand(this);
+        }
     }
 
     @Override

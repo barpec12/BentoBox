@@ -1,16 +1,15 @@
 package world.bentobox.bentobox.api.commands.admin.team;
 
-import java.util.List;
-import java.util.UUID;
-
 import org.bukkit.Bukkit;
-
 import world.bentobox.bentobox.api.commands.CompositeCommand;
 import world.bentobox.bentobox.api.events.IslandBaseEvent;
 import world.bentobox.bentobox.api.events.team.TeamEvent;
 import world.bentobox.bentobox.api.localization.TextVariables;
 import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.database.objects.Island;
+
+import java.util.List;
+import java.util.UUID;
 
 public class AdminTeamDisbandCommand extends CompositeCommand {
 
@@ -20,7 +19,7 @@ public class AdminTeamDisbandCommand extends CompositeCommand {
 
     @Override
     public void setup() {
-        setPermission("admin.team");
+        setPermission("mod.team");
         setParametersHelp("commands.admin.team.disband.parameters");
         setDescription("commands.admin.team.disband.description");
     }
@@ -66,7 +65,7 @@ public class AdminTeamDisbandCommand extends CompositeCommand {
                 Bukkit.getServer().getPluginManager().callEvent(event);
             }
         });
-        user.sendMessage("general.success");
+        user.sendMessage("commands.admin.team.disband.success", TextVariables.NAME, args.get(0));
         return true;
     }
 }

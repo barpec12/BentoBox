@@ -1,21 +1,5 @@
 package world.bentobox.bentobox.api.user;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.logging.Logger;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -33,18 +17,35 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
-
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.Settings;
 import world.bentobox.bentobox.api.addons.AddonDescription;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.bentobox.managers.IslandWorldManager;
 import world.bentobox.bentobox.managers.LocalesManager;
+import world.bentobox.bentobox.managers.PlaceholdersManager;
 import world.bentobox.bentobox.managers.PlayersManager;
+
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.logging.Logger;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 @RunWith(PowerMockRunner.class)
@@ -84,6 +85,7 @@ public class UserTest {
         when(Bukkit.getServer()).thenReturn(server);
         when(Bukkit.getPlayer(Mockito.any(UUID.class))).thenReturn(player);
         when(Bukkit.getLogger()).thenReturn(Logger.getAnonymousLogger());
+        when(Bukkit.getPluginManager()).thenReturn(mock(PluginManager.class));
 
         iwm = mock(IslandWorldManager.class);
         when(plugin.getIWM()).thenReturn(iwm);
@@ -99,6 +101,12 @@ public class UserTest {
         when(plugin.getLocalesManager()).thenReturn(lm);
         when(lm.get(any(), any())).thenReturn(TEST_TRANSLATION);
         when(lm.get(any())).thenReturn(TEST_TRANSLATION);
+
+        // Placeholders
+        PlaceholdersManager placeholdersManager = mock(PlaceholdersManager.class);
+        when(plugin.getPlaceholdersManager()).thenReturn(placeholdersManager);
+        // This will just return the value of the second argument of replacePlaceholders. i.e., it won't change anything
+        when(placeholdersManager.replacePlaceholders(any(), any())).thenAnswer((Answer<String>) invocation -> invocation.getArgumentAt(1, String.class));
 
     }
 
@@ -239,10 +247,16 @@ public class UserTest {
 
     @Test
     public void testGetTranslation() {
-        // Locales - final
         assertEquals("mock translation [test]", user.getTranslation("a.reference"));
-        assertEquals("mock translation variable", user.getTranslation("a.reference", "[test]", "variable"));
+    }
 
+    @Test
+    public void testGetTranslationWithVariable() {
+        assertEquals("mock translation variable", user.getTranslation("a.reference", "[test]", "variable"));
+    }
+
+    @Test
+    public void testGetTranslationNoTranslationFound() {
         // Test no translation found
         when(lm.get(any(), any())).thenReturn(null);
         assertEquals("a.reference", user.getTranslation("a.reference"));
@@ -451,8 +465,8 @@ public class UserTest {
         User u = User.getInstance(player);
         assertEquals(33, u.getPermissionValue("bskyblock.max", 2));
     }
-    
-    
+
+
     /**
      * Test for {@link User#getPermissionValue(String, int)}
      */
@@ -473,7 +487,7 @@ public class UserTest {
         User u = User.getInstance(player);
         assertEquals(-1, u.getPermissionValue("bskyblock.max", 2));
     }
-    
+
     /**
      * Test for {@link User#getPermissionValue(String, int)}
      */

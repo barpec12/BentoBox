@@ -1,13 +1,5 @@
 package world.bentobox.bentobox.api.user;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -21,11 +13,19 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.util.Vector;
-
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.Addon;
+import world.bentobox.bentobox.api.events.OfflineMessageEvent;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Combines {@link Player}, {@link OfflinePlayer} and {@link CommandSender} to provide convenience methods related to
@@ -131,6 +131,7 @@ public class User {
     private Player player;
     private OfflinePlayer offlinePlayer;
     private final UUID playerUUID;
+    @Nullable
     private final CommandSender sender;
 
     private Addon addon;
@@ -346,6 +347,11 @@ public class User {
             }
         }
 
+        // Then replace Placeholders, this will only work if this is a player
+        if (player != null) {
+            translation = plugin.getPlaceholdersManager().replacePlaceholders(player, translation);
+        }
+
         return ChatColor.translateAlternateColorCodes('&', translation);
     }
 
@@ -368,8 +374,8 @@ public class User {
      */
     public void sendMessage(String reference, String... variables) {
         String message = getTranslation(reference, variables);
-        if (!ChatColor.stripColor(message).trim().isEmpty() && sender != null) {
-            sender.sendMessage(message);
+        if (!ChatColor.stripColor(message).trim().isEmpty()) {
+            sendRawMessage(message);
         }
     }
 
@@ -380,6 +386,9 @@ public class User {
     public void sendRawMessage(String message) {
         if (sender != null) {
             sender.sendMessage(message);
+        } else {
+            // Offline player fire event
+            Bukkit.getPluginManager().callEvent(new OfflineMessageEvent(this.playerUUID, message));
         }
     }
 
