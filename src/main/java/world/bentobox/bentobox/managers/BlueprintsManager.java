@@ -6,13 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.jar.JarFile;
 
 import org.bukkit.ChatColor;
@@ -135,7 +129,7 @@ public class BlueprintsManager {
      * @param addon the {@link GameModeAddon} to get the blueprint bundles.
      */
     public Map<String, BlueprintBundle> getBlueprintBundles(@NonNull GameModeAddon addon) {
-        return blueprintBundles.getOrDefault(addon, new HashMap<>());
+        return blueprintBundles.getOrDefault(addon, new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
     }
 
     /**
@@ -153,7 +147,7 @@ public class BlueprintsManager {
      * @param addon the {@link GameModeAddon} to load the blueprints of.
      */
     public void loadBlueprintBundles(@NonNull GameModeAddon addon) {
-        blueprintBundles.put(addon, new HashMap<>());
+        blueprintBundles.put(addon, new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
 
         // See if there are any schems that need converting
         new SchemToBlueprint(plugin).convertSchems(addon);
